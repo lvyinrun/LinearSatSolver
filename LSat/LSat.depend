@@ -1,0 +1,32 @@
+# depslib dependency file v1.0
+1439434156 source:/home/yinrun/Desktop/LinearSatSovler/LSat/main.cpp
+	<iostream>
+	<stdlib.h>
+	<stdio.h>
+	<zlib.h>
+	"parse/ParseUtils.h"
+	"core/Solver.h"
+
+1439433960 source:/home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.cpp
+	"Solver.h"
+
+1439433960 /home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.h
+
+1439435538 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseUtils.h
+	"../tl/Vec.h"
+	"../core/SolverTypes.h"
+	<zlib.h>
+
+1439434492 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Xalloc.h
+	<errno.h>
+	<stdlib.h>
+
+1439435349 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Vec.h
+	<stdlib.h>
+	<assert.h>
+	<limits>
+	<new>
+	<../tl/Xalloc.h>
+
+1439435497 /home/yinrun/Desktop/LinearSatSovler/LSat/core/SolverTypes.h
+
