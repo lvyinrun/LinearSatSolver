@@ -11,9 +11,14 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters="input.smt2" />
 				<Compiler>
 					<Add option="-g" />
+					<Add directory="core" />
 				</Compiler>
+				<Linker>
+					<Add library="/lib/x86_64-linux-gnu/libz.so.1" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/LSat" prefix_auto="1" extension_auto="1" />
@@ -22,6 +27,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="core" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -32,7 +38,14 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="core/Solver.cpp" />
+		<Unit filename="core/Solver.h" />
+		<Unit filename="core/SolverTypes.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="parse/ParseSMT.h" />
+		<Unit filename="parse/ParseUtils.h" />
+		<Unit filename="tl/Vec.h" />
+		<Unit filename="tl/Xalloc.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

@@ -4,10 +4,11 @@
 #include "../tl/Vec.h"
 #include "../core/SolverTypes.h"
 #include <zlib.h>
+#include <map>
+#include <vector>
 //-------------------------------------------------------------------------------------------------
 // A simple buffered character stream class:
-
-
+using namespace std;
 class StreamBuffer {
     gzFile         in;
     unsigned char* buf;
@@ -30,6 +31,9 @@ public:
 
     int  operator *  () const { return (pos >= size) ? EOF : buf[pos]; }
     void operator ++ ()       { pos++; assureLookahead(); }
+    void operator + (const int length)       { pos+=length; assureLookahead(); }
+
+    void operator -= (const int length)       { pos-=length; assureLookahead(); }
     int  position    () const { return pos; }
 };
 
@@ -46,7 +50,8 @@ static inline bool isEof(const char*   in) { return *in == '\0'; }
 
 template<class B>
 static void skipWhitespace(B& in) {
-    while ((*in >= 9 && *in <= 13) || *in == 32)
+// add * in != 10 to temporarly ignore '\n'
+    while ((*in >= 9 && *in <= 13&& *in!=10) || *in == 32)
         ++in; }
 
 
@@ -72,6 +77,19 @@ static int parseInt(B& in) {
     return neg ? -val : val; }
 
 
+template<class B>
+static double parseDouble(B& in) {
+    double     val = 0;
+    bool    neg = false;
+    skipWhitespace(in);
+    if      (*in == '-') neg = true, ++in;
+    else if (*in == '+') ++in;
+    if (*in < '0' || *in > '9') fprintf(stderr, "PARSE ERROR! Unexpected char: %c\n", *in), exit(3);
+    while (*in >= '0' && *in <= '9')
+        val = val*10 + (*in - '0'),
+        ++in;
+    return neg ? -val : val; }
+
 // String matching: in case of a match the input iterator will be advanced the corresponding
 // number of characters.
 template<class B>
@@ -94,17 +112,49 @@ static bool eagerMatch(B& in, const char* str) {
             return false;
     return true; }
 
+// String matching: consumes characters eagerly, but does not require random access iterator.
+template<class B>
+static bool lazyMatch(B& in, const char* str) {
+	int i=0;
+    for (i=0; *str != '\0'; ++str, ++in,i++)
+        if (*str != *in)
+            {in -= i;return false;}
+    return true; }
+
+extern map<string,int > VarMap;
+extern vector<string> VarName;
+// String matching: consumes characters eagerly, but does not require random access iterator.
+template<class B>
+static short lazyMatch(B& in) {
+	if(*in >= '0' && *in <= '9') return -1;
+	else {
+		string res="";
+		while(*in !=' '&& *in!=')') {
+			res += *in;++in;
+		}
+		map<string,int>::iterator it = VarMap.find(res);
+		if(it!=VarMap.end()){
+			return it->second;
+		}else{
+			VarMap.insert(pair<string,int>(res,VarMap.size()));
+			VarName.push_back(res);
+			return VarMap.size()-1;
+		}
+	}
+
+}
 //=================================================================================================
 //=================================================================================================
 // DIMACS Parser:
 
 template<class B, class Solver>
-static void readClause(B& in, Solver& S ,vec<Lit>& lits){
+static void readClause(B& in, Solver& S ,vec<LitArith>& lits){
     int     parsed_lit, var;
     lits.clear();
     for (;;){
         parsed_lit = parseInt(in);
         if (parsed_lit == 0) break;
+        printf("\n%d",parsed_lit);
 //        var = abs(parsed_lit)-1;
 //
 //        while (var >= S.nVars())
@@ -116,7 +166,7 @@ static void readClause(B& in, Solver& S ,vec<Lit>& lits){
 }
 template<class B, class Solver>
 static void parse_DIMACS_main(B& in, Solver& S, bool strictp = false) {
-    vec<Lit> lits;
+    vec<LitArith> lits;
     int vars    = 0;
     int clauses = 0;
     int cnt     = 0;
@@ -138,7 +188,6 @@ static void parse_DIMACS_main(B& in, Solver& S, bool strictp = false) {
         else{
             cnt++;
             readClause(in, S, lits);
-            printf("lits:%d\n",100);
        //     S.addClause_(lits);
 	}
     }

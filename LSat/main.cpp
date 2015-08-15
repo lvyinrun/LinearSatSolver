@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <zlib.h>
 
-#include "parse/ParseUtils.h"
+#include "parse/ParseSMT.h"
 #include "core/Solver.h"
 
 using namespace std;
@@ -17,7 +17,7 @@ int main(int argc, char **argv)
         printf("ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
 
 	Solver S;
-    parse_DIMACS(in, S, (bool)0);
-    cout << "Hello world!" << endl;
+    parse_SMT(in, S, (bool)0);
+    cout << "\n\nHello world!" << endl;
     return 0;
 }

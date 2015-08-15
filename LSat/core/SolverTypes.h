@@ -25,4 +25,9 @@ inline  int  var       (Lit p)              { return p.x >> 1; }
 const Lit lit_Undef = { -2 };  // }- Useful special constants.
 const Lit lit_Error = { -1 };  // }
 
+enum ArithSign {GREAT_EQUAL,LESS_EQUAL} ;
+struct LitArith{
+	int x;
+	enum ArithSign sign;
+};
 #endif // SOLVERTYPES_H_INCLUDED
