@@ -6,6 +6,7 @@
 #include <zlib.h>
 #include <map>
 #include <vector>
+#include <string>
 //-------------------------------------------------------------------------------------------------
 // A simple buffered character stream class:
 using namespace std;
@@ -189,7 +190,7 @@ static void parse_DIMACS_main(B& in, Solver& S, bool strictp = false) {
             cnt++;
             readClause(in, S, lits);
        //     S.addClause_(lits);
-	}
+		}
     }
     if (strictp && cnt != clauses)
         printf("PARSE ERROR! DIMACS header mismatch: wrong number of clauses\n");

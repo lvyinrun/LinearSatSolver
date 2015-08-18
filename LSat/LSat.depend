@@ -7,17 +7,27 @@
 	"parse/ParseSMT.h"
 	"core/Solver.h"
 
-1439433960 source:/home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.cpp
+1439880611 source:/home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.cpp
+	<math.h>
 	"Solver.h"
 
-1439433960 /home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.h
+1439880560 /home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.h
+	<stdio.h>
+	"SolverTypes.h"
+	"../tl/Vec.h"
+	"../tl/Alloc.h"
+	"../tl/Sort.h"
+	"../tl/Alg.h"
+	"../tl/Heap.h"
+	"../utils/Options.h"
 
-1439539619 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseUtils.h
+1439812490 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseUtils.h
 	"../tl/Vec.h"
 	"../core/SolverTypes.h"
 	<zlib.h>
 	<map>
 	<vector>
+	<string>
 
 1439434492 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Xalloc.h
 	<errno.h>
@@ -30,9 +40,12 @@
 	<new>
 	<../tl/Xalloc.h>
 
-1439448305 /home/yinrun/Desktop/LinearSatSovler/LSat/core/SolverTypes.h
+1439879432 /home/yinrun/Desktop/LinearSatSovler/LSat/core/SolverTypes.h
+	"inttypes.h"
+	"../tl/IntMap.h"
+	"../tl/Alloc.h"
 
-1439625991 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseSMT.h
+1439880869 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseSMT.h
 	<zlib.h>
 	<stack>
 	<map>
@@ -40,4 +53,28 @@
 	"../tl/Vec.h"
 	"../core/SolverTypes.h"
 	<../parse/ParseUtils.h>
+
+1439815667 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Alloc.h
+	"minisat/mtl/XAlloc.h"
+	"minisat/mtl/Vec.h"
+
+1439776668 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Sort.h
+
+1439795238 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Alg.h
+
+1439795272 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/Heap.h
+	"../tl/Vec.h"
+	"../tl/IntMap.h"
+
+1439862849 /home/yinrun/Desktop/LinearSatSovler/LSat/tl/IntMap.h
+	"../tl/Vec.h"
+	"stdlib.h"
+
+1439795336 /home/yinrun/Desktop/LinearSatSovler/LSat/utils/Options.h
+	<stdlib.h>
+	<stdio.h>
+	<math.h>
+	<string.h>
+	"../tl/Vec.h"
+	"../parse/ParseUtils.h"
 

@@ -11,8 +11,11 @@
 #include <../parse/ParseUtils.h>
 using namespace std;
 
+int clauseOrder = 0;
 map<string,int > VarMap;
 vector<string> VarName;
+
+bool smt_debug_flag=false;
 // Inserts problem into solver.
 //
 template<class Solver>
@@ -20,57 +23,8 @@ static void parse_SMT(gzFile input_stream, Solver& S, bool strictp = false) {
     StreamBuffer in(input_stream);
     parse_SMT_main(in, S, strictp);
 }
-bool debug_flag=false;
-const char * ARITH_OPTR_LPAR = "(";
-const char * ARITH_OPTR_RPAR = ")";
-const char * ARITH_OPTR_AND = "and";
-const char * ARITH_OPTR_OR = "or";
-const char * ARITH_OPTR_PLUS = "+";
-const char * ARITH_OPTR_MINUX = "-";
-const char * ARITH_OPTR_MUL = "*";
-const char * ARITH_OPTR_DIV = "/";
-const char * ARITH_OPTR_NEG = "-";
-const char * ARITH_OPTR_EQ = "=";
-const char * ARITH_OPTR_GRT = ">";
-const char * ARITH_OPTR_GRTEQ = ">=";
-const char * ARITH_OPTR_LESS = "<";
-const char * ARITH_OPTR_LESSEQ = "<=";
-
-enum ArithContentType {OPERATOR,VAR,VALUE,TERM};
-enum ArithOperator{
-	OPTR_LPAR,OPTR_RPAR,OPTR_AND,OPTR_OR,OPTR_PLUS,OPTR_MINUX,OPTR_MUL,OPTR_DIV,OPTR_NEG,OPTR_EQ,OPTR_GRT,OPTR_GRTEQ,OPTR_LESS,OPTR_LESSEQ
-};
-
-struct ArithTerm{
-	double coefficient;
-	int variable;
-	friend ArithTerm mkArithTerm(double c,int v);
-};
-
-inline ArithTerm mkArithTerm(double c,int v){
-	ArithTerm  term;
-	term.coefficient = c;
-	term.variable = v;
-	return term;
-}
-
-struct ArithItem{
-	ArithContentType type;
-	union {
-		ArithOperator optr;
-		double dvalue;
-		int varOrder;
-		ArithTerm term;
-	} item_value;
-
-	friend ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr);
-	friend ArithItem mkArithItemVar(ArithContentType t,int var);
-	friend ArithItem mkArithItemValue(ArithContentType t,double val);
-	friend ArithItem mkArithItemTerm(ArithContentType t,ArithTerm term);
-};
-
 void print_item(ArithItem item,int stack_size){
-	if(debug_flag!=true) return;
+	if(smt_debug_flag!=true) return;
 	if(item.type==OPERATOR) printf("operator\t %d\n",stack_size);
 	else if(item.type==VALUE) printf("%f\t %d\n",item.item_value.dvalue,stack_size);
 	else if(item.type==VAR) printf("%s\t %d\n",VarName[item.item_value.varOrder].c_str(),stack_size);
@@ -86,23 +40,14 @@ void print_item_format(ArithItem item){
 	else if(item.type==VAR) printf("%s\t",VarName[item.item_value.varOrder].c_str());
 	else if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
 }
-inline ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr){
-	ArithItem ai;ai.type = t;ai.item_value.optr = optr;	return ai;}
 
-inline ArithItem mkArithItemVar(ArithContentType t,int var){
-	ArithItem ai;ai.type = t;ai.item_value.varOrder = var;return ai;
-}
-inline ArithItem mkArithItemValue(ArithContentType t,double val){
-	ArithItem ai;ai.type = t;ai.item_value.dvalue = val;return ai;
-}
-inline ArithItem mkArithItemTerm(ArithTerm term){
-	ArithItem ai;ai.type = TERM;ai.item_value.term = term;return ai;
-}
 struct ArithLine{
 	ArithOperator optr;
 	vec<ArithTerm> left;
 	vec<ArithTerm> right;
 };
+
+
 template<class B, class Solver>
 static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
     vec<LitArith> lits;
@@ -395,6 +340,40 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 							print_item(s.top(),s.size());
 						}
 						else if(ai.item_value.optr == OPTR_EQ|| ai.item_value.optr == OPTR_GRT|| ai.item_value.optr == OPTR_GRTEQ || ai.item_value.optr == OPTR_LESS || ai.item_value.optr == OPTR_LESSEQ){
+							//readClause;此处相当于read clause
+							LitArith la;
+							if(localTemp.size()>0){
+								ArithItem cur = localTemp.top();
+								localTemp.pop();
+								stack<ArithItem> cur_stack;
+								if(cur.type == OPTR_LPAR){
+									cur_stack.push(cur);
+								}else{
+									//print_item_format(cur);
+									if(cur.type == VAR) {
+										la.x = clauseOrder++;
+										la.vn = cur.item_value.varOrder;
+									}
+								}
+								while(cur_stack.size()>0){
+									cur = localTemp.top();
+									localTemp.pop();
+									if(cur.type==OPERATOR&&cur.item_value.optr == OPTR_LPAR) cur_stack.push(cur);
+									else if(cur.type==OPERATOR&& cur.item_value.optr == OPTR_RPAR) cur_stack.pop();
+									else{
+										//print_item_format(cur);
+										if(cur.type == VAR) la.x = cur.item_value.varOrder;
+									}
+								}
+							}
+
+							if(ai.item_value.optr == OPTR_EQ){
+								printf(" = ");la.o = OPTR_EQ;
+							}else if(ai.item_value.optr == OPTR_GRT){printf(" > ");la.o=OPTR_GRT;
+							}else if(ai.item_value.optr == OPTR_GRTEQ){printf(" >= ");la.o=OPTR_GRTEQ;
+							}else if(ai.item_value.optr == OPTR_LESS){printf(" < ");la.o=OPTR_LESS;
+							}else if(ai.item_value.optr == OPTR_LESSEQ){printf(" <= ");la.o = OPTR_LESSEQ;
+							}else{ printf("what happends");}
 
 							if(localTemp.size()>0){
 								ArithItem cur = localTemp.top();
@@ -403,7 +382,8 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 								if(cur.type == OPTR_LPAR){
 									cur_stack.push(cur);
 								}else{
-									print_item_format(cur);
+									//print_item_format(cur);
+									if(cur.type == VALUE) la.v = cur.item_value.dvalue;
 								}
 								while(cur_stack.size()>0){
 									cur = localTemp.top();
@@ -411,40 +391,25 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 									if(cur.type==OPERATOR&&cur.item_value.optr == OPTR_LPAR) cur_stack.push(cur);
 									else if(cur.type==OPERATOR&& cur.item_value.optr == OPTR_RPAR) cur_stack.pop();
 									else{
-										print_item_format(cur);
+										//print_item_format(cur);
+										if(cur.type == VALUE) la.v = cur.item_value.dvalue;
 									}
 								}
 							}
-
-							if(ai.item_value.optr == OPTR_EQ){printf(" = ");
-							}else if(ai.item_value.optr == OPTR_GRT){printf(" > ");
-							}else if(ai.item_value.optr == OPTR_GRTEQ){printf(" >= ");
-							}else if(ai.item_value.optr == OPTR_LESS){printf(" < ");
-							}else if(ai.item_value.optr == OPTR_LESSEQ){printf(" <= ");}
-
-							if(localTemp.size()>0){
-								ArithItem cur = localTemp.top();
-								localTemp.pop();
-								stack<ArithItem> cur_stack;
-								if(cur.type == OPTR_LPAR){
-									cur_stack.push(cur);
-								}else{
-									print_item_format(cur);
-								}
-								while(cur_stack.size()>0){
-									cur = localTemp.top();
-									localTemp.pop();
-									if(cur.type==OPERATOR&&cur.item_value.optr == OPTR_LPAR) cur_stack.push(cur);
-									else if(cur.type==OPERATOR&& cur.item_value.optr == OPTR_RPAR) cur_stack.pop();
-									else{
-										print_item_format(cur);
-									}
-								}
-							}
-							printf("\n");
+							while (la.x >= S.nVars()) S.newVar(la);
+							lits.push(la);
 						}
 						else if(ai.item_value.optr == OPTR_OR){
-							printf("\n");
+							printf("vec size %d\n",lits.size());
+							LitArith lit;
+							for(int i = 0; i<lits.size();i++){
+								lit = lits[i];
+							}
+							S.addClauseArith_(lits);
+
+
+							lits.clear();
+
 
 						}else if(ai.item_value.optr == OPTR_AND){
 							printf("\n\n AND \n");
@@ -454,52 +419,57 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 					}else if(lazyMatch(in,ARITH_OPTR_LPAR)) {
 						//s.push()
 						s.push(mkArithItemOptr(OPERATOR,OPTR_LPAR));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_LPAR,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_LPAR,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_AND)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_AND));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_AND,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_AND,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_OR)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_OR));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_OR,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_OR,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_PLUS)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_PLUS));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_PLUS,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_PLUS,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_MINUX)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_MINUX));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_MINUX,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_MINUX,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_MUL)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_MUL));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_MUL,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_MUL,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_DIV)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_DIV));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_DIV,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_DIV,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_NEG)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_NEG));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_NEG,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_NEG,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_EQ)) {
+					// =
 						s.push(mkArithItemOptr(OPERATOR,OPTR_EQ));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_EQ,s.size());
-					}else if(lazyMatch(in,ARITH_OPTR_GRT)) {
-						s.push(mkArithItemOptr(OPERATOR,OPTR_GRT));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_GRT,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_EQ,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_GRTEQ)) {
+					// >=
 						s.push(mkArithItemOptr(OPERATOR,OPTR_GRTEQ));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_GRTEQ,s.size());
-					}else if(lazyMatch(in,ARITH_OPTR_LESS)) {
-						s.push(mkArithItemOptr(OPERATOR,OPTR_LESS));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_LESS,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_GRTEQ,s.size());
+					}else if(lazyMatch(in,ARITH_OPTR_GRT)) {
+					// >
+						s.push(mkArithItemOptr(OPERATOR,OPTR_GRT));
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_GRT,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_LESSEQ)) {
+					// <=
 						s.push(mkArithItemOptr(OPERATOR,OPTR_LESSEQ));
-						if(debug_flag==true) printf("%s %d\n",ARITH_OPTR_LESSEQ,s.size());
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_LESSEQ,s.size());
+					}else if(lazyMatch(in,ARITH_OPTR_LESS)) {
+					// <
+						s.push(mkArithItemOptr(OPERATOR,OPTR_LESS));
+						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_LESS,s.size());
 					}
 					else if(( var_order = lazyMatch(in) ) > -1) {
 						s.push(mkArithItemVar(VAR,var_order));
-						if(debug_flag==true) printf("%s %d var_order:%d\n",VarName[var_order].c_str(),s.size(),var_order);
+						if(smt_debug_flag==true) printf("%s %d var_order:%d\n",VarName[var_order].c_str(),s.size(),var_order);
 					}
 					//printf("%s\n",ARITH_OPTR_NEG);
 					else {//pare double and push stack
 						s.push(mkArithItemValue(VALUE,parseDouble(in)));
-						if(debug_flag==true) printf("%f %d\n",s.top().item_value.dvalue,s.size());
+						if(smt_debug_flag==true) printf("%f %d\n",s.top().item_value.dvalue,s.size());
 					}
 				}
 

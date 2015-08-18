@@ -44,8 +44,14 @@
 		<Unit filename="main.cpp" />
 		<Unit filename="parse/ParseSMT.h" />
 		<Unit filename="parse/ParseUtils.h" />
+		<Unit filename="tl/Alg.h" />
+		<Unit filename="tl/Alloc.h" />
+		<Unit filename="tl/Heap.h" />
+		<Unit filename="tl/IntMap.h" />
+		<Unit filename="tl/Sort.h" />
 		<Unit filename="tl/Vec.h" />
 		<Unit filename="tl/Xalloc.h" />
+		<Unit filename="utils/Options.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />
