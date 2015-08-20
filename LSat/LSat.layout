@@ -1,59 +1,64 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Debug" />
-	<File name="core/SolverTypes.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/Vec.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="4154" topLine="109" />
+			<Cursor1 position="1056" topLine="30" />
 		</Cursor>
 	</File>
-	<File name="parse/ParseUtils.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="parse/ParseSMT.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="185" topLine="120" />
+			<Cursor1 position="16533" topLine="24" />
 		</Cursor>
 	</File>
-	<File name="tl/Vec.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/Xalloc.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1056" topLine="5" />
+			<Cursor1 position="524" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="core/Solver.h" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/Alloc.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="15595" topLine="316" />
+			<Cursor1 position="295" topLine="7" />
 		</Cursor>
 	</File>
-	<File name="core/Solver.cpp" open="1" top="1" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/Sort.h" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="4773" topLine="111" />
+			<Cursor1 position="373" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="tl/Sort.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="main.cpp" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="94" topLine="0" />
+			<Cursor1 position="622" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="tl/Xalloc.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/Heap.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="378" topLine="0" />
+			<Cursor1 position="0" topLine="15" />
 		</Cursor>
 	</File>
-	<File name="main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="tl/IntMap.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="502" topLine="0" />
+			<Cursor1 position="362" topLine="24" />
 		</Cursor>
 	</File>
-	<File name="tl/IntMap.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="parse/ParseUtils.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="608" topLine="3" />
+			<Cursor1 position="795" topLine="78" />
 		</Cursor>
 	</File>
-	<File name="tl/Alloc.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="core/Solver.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="1685" topLine="5" />
+			<Cursor1 position="13239" topLine="237" />
 		</Cursor>
 	</File>
-	<File name="parse/ParseSMT.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="core/SolverTypes.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="12776" topLine="377" />
+			<Cursor1 position="5700" topLine="154" />
+		</Cursor>
+	</File>
+	<File name="core/Solver.cpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="20308" topLine="576" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

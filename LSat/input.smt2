@@ -10,6 +10,6 @@
 (declare-fun x4 () Real)
 (declare-fun x5 () Real)
 (declare-fun x6 () Real)
-(assert (and  (or  (>= x1 8 ) (>= x2 0) (>= x3 (- 7))) (or  (<= x1 100 ) (>= x2 0)) )
+(assert (and  (or  (>= x1 8 ) (>= x2 0) (>= x3 (- 7)))  (or (<= x1 100)) (or  (<= x1 100 ) (>= x2 0) (>= x4 10)) (or  (>= x1 18 ) (>= x2 12) (>= x5 10)) )
 (check-sat)
 (exit)

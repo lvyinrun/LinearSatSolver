@@ -90,6 +90,7 @@ public:
     Var       next_var;         // Next variable to be created.
     ClauseAllocator     ca;
 
+	vec<VarBound>		bounds;   //Lists of bounds of all variables
     vec<CRef>           clauses;          // List of problem clauses.
     vec<CRef>           learnts;          // List of learnt clauses.
     vec<LitArith>            trail;            // Assignment stack; stores all assigments made in the order they were made.
@@ -101,7 +102,8 @@ public:
     VMap<char>          polarity;         // The preferred polarity of each variable.
 	VMap<lbool>         user_pol;         // The users preferred polarity of each variable.
     VMap<VarData>       vardata;          // Stores reason and level for each variable.
-	OccLists<LitArith, vec<Watcher>, WatcherDeleted, MkIndexLit> watches;
+	OccLists<Var, vec<Watcher>, WatcherDeleted, MkIndexLit> watches;
+	//not to watch lit,but variables
     // 'watches[lit]' is a list of constraints watching 'lit' (will go there if literal becomes true).
 	Heap<Var,VarOrderLt>order_heap;       // A priority queue of variables ordered with respect to the variable activity.
 
@@ -237,6 +239,37 @@ public:
     void     relocAll         (ClauseAllocator& to);
     int      level            (Var x) const;
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
+
+    //Arith helpers
+    void displayClauses(){
+		printf("\n\n\n****************   Display Clause  ***************\n");
+		printf("%d\n\n",clauses.size());
+		for(int i=0;i<clauses.size();i++){
+			int k = clauses[i];
+			printf("Clause %d:\n",k+1);
+			displayOneClause(ca[k]);
+		}
+    }
+    void displayOneClause(Clause &cla){
+		int k = cla.header.size;
+		printf(" size:%d\n",k);
+		for(int i=0;i<k;i++){
+			printf("  %s %d %f\t",VarName[cla.data[i].lit.vn].c_str(),cla.data[i].lit.o,cla.data[i].lit.v);
+		}
+		printf("\n");
+    }
+
+    void displayWatchList(){
+		printf("\n\n\n****************   Display Watches  ***************\n");
+		for(int i=0;i<VarName.size();i++){
+			vec<Watcher> wc = watches[i];
+			printf(" order:%d\n",i);
+			for(int j=0;j<wc.size();j++){
+				printf("  %d %s %d %f\t",wc[j].cref,VarName[wc[j].blocker.vn].c_str(),wc[j].blocker.o,wc[j].blocker.v);
+			}printf("\n");
+		};
+    }
+
     // Static helpers:
     //
 

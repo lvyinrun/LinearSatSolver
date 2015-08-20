@@ -11,7 +11,6 @@
 #include <../parse/ParseUtils.h>
 using namespace std;
 
-int clauseOrder = 0;
 map<string,int > VarMap;
 vector<string> VarName;
 
@@ -40,12 +39,6 @@ void print_item_format(ArithItem item){
 	else if(item.type==VAR) printf("%s\t",VarName[item.item_value.varOrder].c_str());
 	else if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
 }
-
-struct ArithLine{
-	ArithOperator optr;
-	vec<ArithTerm> left;
-	vec<ArithTerm> right;
-};
 
 
 template<class B, class Solver>
@@ -351,7 +344,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 								}else{
 									//print_item_format(cur);
 									if(cur.type == VAR) {
-										la.x = clauseOrder++;
+										la.x = S.nVars();
 										la.vn = cur.item_value.varOrder;
 									}
 								}
@@ -396,15 +389,21 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 									}
 								}
 							}
+							/* very importatn
+								and the new clause to Solver state
+								*/
 							while (la.x >= S.nVars()) S.newVar(la);
-							lits.push(la);
+							s.push(mkArithItemLitArith(la));
 						}
 						else if(ai.item_value.optr == OPTR_OR){
-							printf("vec size %d\n",lits.size());
 							LitArith lit;
-							for(int i = 0; i<lits.size();i++){
-								lit = lits[i];
+							while(localTemp.size()>0){
+								ArithItem it = localTemp.top();
+								localTemp.pop();
+								lits.push(it.item_value.la);
 							}
+
+							printf("vec size %d\n",lits.size());
 							S.addClauseArith_(lits);
 
 

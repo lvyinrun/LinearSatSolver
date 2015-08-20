@@ -94,9 +94,8 @@ Var Solver::newVar(lbool upol, bool dvar)
     }else
         v = next_var++;
 
-    //watches  .init(mkLit(v,0,OPTR_EQ,0, false));
     //one watch is enough
-    watches  .init(mkLit(v,0,OPTR_EQ,0,  true ));
+    watches  .init(v);
     assigns  .insert(v, l_Undef);
     vardata  .insert(v, mkVarData(CRef_Undef, 0));
     activity .insert(v, rnd_init_act ? drand(random_seed) * 0.00001 : 0);
@@ -120,9 +119,12 @@ Var Solver::newVar(LitArith &lit, lbool upol)
         free_vars.pop();
     }else
         v = next_var++;
-
-    watches  .init(mkLit(v,0,OPTR_EQ,0, false));
-    watches  .init(mkLit(v,0,OPTR_EQ,0,  true ));
+	//判断第序号为vn的变量是否已经初始化watches
+    if(lit.vn + 1 >= VarName.size()) {
+		printf("init ::   %d  ::",lit.vn);
+		watches  .init(lit.vn);
+		bounds.push(VarBound(lit.vn, 0, 0 ));
+    }
     assigns  .insert(v, l_Undef);
     vardata  .insert(v, mkVarData(CRef_Undef, 0));
     activity .insert(v, rnd_init_act ? drand(random_seed) * 0.00001 : 0);
@@ -188,9 +190,9 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
     else if (ps.size() == 1){
         uncheckedEnqueue(ps[0]);
         return ok = (propagate() == CRef_Undef);
-    }else{
+    }
+    else{
         CRef cr = ca.alloc(ps, false);
-        printf("\n%d",cr);
         clauses.push(cr);
         attachClause(cr);
     }
@@ -413,7 +415,7 @@ bool Solver::litRedundant(LitArith p)
 |    stores the result in 'out_conflict'.
 |________________________________________________________________________________________________@*/
 void Solver::analyzeFinal(LitArith p, LSet& out_conflict)
-{
+{/*
     out_conflict.clear();
     out_conflict.insert(p);
 
@@ -438,7 +440,7 @@ void Solver::analyzeFinal(LitArith p, LSet& out_conflict)
         }
     }
 
-    seen[var(p)] = 0;
+    seen[var(p)] = 0;*/
 }
 
 /*_________________________________________________________________________________________________
@@ -712,8 +714,8 @@ void Solver::attachClause(CRef cr){
 
     const Clause& c = ca[cr];
     assert(c.size() > 1);
-    watches[c[0]].push(Watcher(cr, c[0]));
-    watches[c[1]].push(Watcher(cr, c[1]));
+    for(int i=0;i<c.size();i++)
+		watches[(c[i]).vn].push(Watcher(cr, c[i]));
     if (c.learnt()) num_learnts++, learnts_literals += c.size();
     else            num_clauses++, clauses_literals += c.size();
 }
@@ -723,11 +725,11 @@ void Solver::detachClause(CRef cr, bool strict){
 
     // Strict or lazy detaching:
     if (strict){
-        remove(watches[c[0]], Watcher(cr, c[0]));
-        remove(watches[c[1]], Watcher(cr, c[0]));
+        remove(watches[(c[0]).x], Watcher(cr, c[0]));
+        remove(watches[(c[0]).x], Watcher(cr, c[0]));
     }else{
-        watches.smudge(c[0]);
-        watches.smudge(c[1]);
+        watches.smudge(c[0].x);
+        watches.smudge(c[1].x);
     }
 
     if (c.learnt()) num_learnts--, learnts_literals -= c.size();
@@ -837,7 +839,7 @@ static double luby(double y, int x){
 
 // NOTE: assumptions passed in member-variable 'assumptions'.
 lbool Solver::solve_()
-{
+{/*
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
@@ -881,6 +883,8 @@ lbool Solver::solve_()
 
     cancelUntil(0);
     return status;
+    */
+    return l_False;//add temp
 }
 
 //=================================================================================================
@@ -894,7 +898,7 @@ void Solver::relocAll(ClauseAllocator& to)
     for (int v = 0; v < nVars(); v++)
         for (int s = 0; s < 2; s++){
             LitArith p = mkLit(v, 0, OPTR_EQ,0, s);
-            vec<Watcher>& ws = watches[p];
+            vec<Watcher>& ws = watches[p.x];
             for (int j = 0; j < ws.size(); j++)
                 ca.reloc(ws[j].cref, to);
         }

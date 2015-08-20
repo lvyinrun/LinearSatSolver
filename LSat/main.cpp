@@ -18,6 +18,13 @@ int main(int argc, char **argv)
 
 	Solver S;
     parse_SMT(in, S, (bool)0);
+
+
+    gzclose(in);
+    FILE* res = (argc >= 3) ? fopen(argv[2], "wb") : NULL;
+    S.displayClauses();
+    S.displayWatchList();
+
     cout << "\n\nHello world!" << endl;
     return 0;
 }

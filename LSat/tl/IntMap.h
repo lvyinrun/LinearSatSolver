@@ -6,7 +6,6 @@
 
 template<class T> struct MkIndexDefault {
 	typename vec<T>::Size operator()(T t) const {
-	printf("\n\n\n\n\nhere is ok");
 	 return (typename vec<T>::Size)t;
 	 }
 };
@@ -14,6 +13,7 @@ template<class T> struct MkIndexDefault {
 
 template<class K, class V, class MkIndex = MkIndexDefault<K> >
 class IntMap {
+public://this should be removed
         vec<V>   map;
         MkIndex  index;
 	public:

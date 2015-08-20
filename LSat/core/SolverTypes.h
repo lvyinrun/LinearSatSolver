@@ -45,9 +45,16 @@ const char * const ARITH_OPTR_GRTEQ = ">=";
 const char * const ARITH_OPTR_LESS = "<";
 const char * const ARITH_OPTR_LESSEQ = "<=";
 
-enum ArithContentType {OPERATOR,VAR,VALUE,TERM};
+enum ArithContentType {OPERATOR,VAR,VALUE,TERM,ARITH};
 enum ArithOperator{
 	OPTR_LPAR,OPTR_RPAR,OPTR_AND,OPTR_OR,OPTR_PLUS,OPTR_MINUX,OPTR_MUL,OPTR_DIV,OPTR_NEG,OPTR_EQ,OPTR_GRT,OPTR_GRTEQ,OPTR_LESS,OPTR_LESSEQ
+};
+
+struct VarBound{
+	int var;
+	double left;
+	double right;
+	VarBound(int v, double l, double r):var(v),left(l),right(r){};
 };
 
 //Arith
@@ -102,12 +109,14 @@ struct ArithItem{
 		double dvalue;
 		int varOrder;
 		ArithTerm term;
+		LitArith la;
 	} item_value;
 
 	friend ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr);
 	friend ArithItem mkArithItemVar(ArithContentType t,int var);
 	friend ArithItem mkArithItemValue(ArithContentType t,double val);
 	friend ArithItem mkArithItemTerm(ArithContentType t,ArithTerm term);
+	friend ArithItem mkArithItemLitArith(LitArith arith);
 };
 inline ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr){
 	ArithItem ai;ai.type = t;ai.item_value.optr = optr;	return ai;}
@@ -122,7 +131,9 @@ inline ArithItem mkArithItemTerm(ArithTerm term){
 	ArithItem ai;ai.type = TERM;ai.item_value.term = term;return ai;
 }
 
-
+inline ArithItem mkArithItemLitArith(LitArith arith){
+	ArithItem ai;ai.type = ARITH;ai.item_value.la = arith;return ai;
+}
 
 
 class lbool {
@@ -156,9 +167,9 @@ inline lbool toLbool(int   v) { return lbool((uint8_t)v);  }
 
 
 struct MkIndexLit {
-	vec<LitArith>::Size operator()(LitArith l) const {
-		printf("mamamam::::  %d   \n",vec<LitArith>::Size(l.x));
-		return vec<LitArith>::Size(l.x); }
+	vec<LitArith>::Size operator()(int x) const {
+		//printf("mamamam::::  %d   \n",vec<LitArith>::Size(l.x));
+		return vec<LitArith>::Size(x); }
 };
 
 template<class T> class VMap : public IntMap<Var, T>{};
@@ -170,6 +181,7 @@ class LSet : public IntSet<LitArith, MkIndexLit>{};
 template<class K, class Vec, class Deleted, class MkIndex = MkIndexDefault<K> >
 class OccLists
 {
+public:
     IntMap<K, Vec,  MkIndex> occs;
     IntMap<K, char, MkIndex> dirty;
     vec<K>                   dirties;
@@ -183,11 +195,12 @@ class OccLists
 
     void  init      (const K& idx){
      occs.reserve(idx);
-     occs[idx];
-    // occs[idx].clear();
+     occs[idx].clear();
      dirty.reserve(idx, 0);
      }
-    Vec&  operator[](const K& idx){ return occs[idx]; }
+    Vec&  operator[](const K& idx){
+		return occs[idx];
+	}
     Vec&  lookup    (const K& idx){ if (dirty[idx]) clean(idx); return occs[idx]; }
 
     void  cleanAll  ();
@@ -245,7 +258,7 @@ class Clause;
 typedef RegionAllocator<uint32_t>::Ref CRef;
 
 class Clause {
-
+public://this should be removed
     struct {
         unsigned mark      : 2;
         unsigned learnt    : 1;
@@ -287,7 +300,7 @@ class Clause {
                 data[header.size].act = from.data[header.size].act;
             else
                 data[header.size].abs = from.data[header.size].abs;
-    }
+		}
     }
 
 public:
@@ -323,11 +336,11 @@ public:
 const CRef CRef_Undef = RegionAllocator<uint32_t>::Ref_Undef;
 class ClauseAllocator
 {
-    RegionAllocator<LitArith> ra;
+    RegionAllocator<uint32_t> ra;//4 bytes
 	bool extra_clause_field;
 	static uint32_t clauseWord32Size(int size, bool has_extra){
-	printf("size:   Clause%d  LitArith:%d size:%d has_extra:%d,uint32:%d\n",sizeof(Clause),sizeof(LitArith),size , (int)has_extra, sizeof(uint32_t));
-        return (sizeof(Clause) + (sizeof(LitArith) * (size + (int)has_extra))) / sizeof(uint32_t); }
+	//printf("size:   Clause%d  LitArith:%d size:%d has_extra:%d,uint32:%d\n",sizeof(Clause),sizeof(LitArith),size , (int)has_extra, sizeof(uint32_t));
+        return (sizeof(Clause) + (sizeof(LitArith) * (size + (int)has_extra)))/sizeof(uint32_t); }
 public:
 	enum { Unit_Size = RegionAllocator<uint32_t>::Unit_Size };
 	ClauseAllocator(uint32_t start_cap) : ra(start_cap), extra_clause_field(false){}
@@ -343,7 +356,7 @@ public:
     const Clause* lea       (CRef r) const   {
 		return (Clause*)ra.lea(r);
 	}
-    CRef          ael       (const Clause* t){ return ra.ael((LitArith*)t); }
+    CRef          ael       (const Clause* t){ return ra.ael((uint32_t*)t); }
 
 	CRef alloc(const vec<LitArith>& ps, bool learnt = false)
     {
