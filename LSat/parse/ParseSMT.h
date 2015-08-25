@@ -403,7 +403,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 								lits.push(it.item_value.la);
 							}
 
-							printf("vec size %d\n",lits.size());
+							//printf("vec size %d\n",lits.size());
 							S.addClauseArith_(lits);
 
 

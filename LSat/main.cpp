@@ -22,9 +22,25 @@ int main(int argc, char **argv)
 
     gzclose(in);
     FILE* res = (argc >= 3) ? fopen(argv[2], "wb") : NULL;
-    S.displayClauses();
-    S.displayWatchList();
 
-    cout << "\n\nHello world!" << endl;
+	S.displayWatchList();
+	S.displayClauses();
+
+
+	if(!S.simplify())     cout << "\n\Failed" << endl;
+	else cout<<"\n\nstart solving\n\n"<<endl;
+	vec<LitArith> dummy;
+	//int k = S.order_heap.size();
+	lbool ret = S.solveLimited(dummy);
+
+	printf(ret == l_True ? "SATISFIABLE\n" : ret == l_False ? "UNSATISFIABLE\n" : "INDETERMINATE\n");
+	if (ret == l_True)
+        {
+            printf("SAT\n");
+            for (int i = 0; i < S.nVars(); i++)
+                if (S.model[i] != l_Undef)
+                    printf("%s%s%d", (i==0)?"":" ", (S.model[i]==l_True)?"":"-", i+1);
+            printf(" 0\n");
+        }
     return 0;
 }

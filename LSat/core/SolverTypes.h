@@ -4,7 +4,7 @@
 #include "inttypes.h"
 #include "../tl/IntMap.h"
 #include "../tl/Alloc.h"
-
+#include <float.h>
 typedef int Var;
 const Var var_Undef = -1;
 /*
@@ -52,9 +52,9 @@ enum ArithOperator{
 
 struct VarBound{
 	int var;
-	double left;
-	double right;
-	VarBound(int v, double l, double r):var(v),left(l),right(r){};
+	double lower;
+	double upper;
+	VarBound(int v, double l, double r):var(v),lower(l),upper(r){};
 };
 
 //Arith
@@ -66,8 +66,8 @@ struct LitArith{
 	double v;//value
 
 	friend LitArith mkLit(Var lit,int varname, ArithOperator optr,double value, bool sign = false);
-	bool operator == (LitArith p) const {return (p.vn == vn && p.o == o && p.v == v);}
-	bool operator != (LitArith p) const {return (p.vn != vn || p.o != o|| p.v != v);}
+	bool operator == (LitArith p) const {return (p.x == x);}
+	bool operator != (LitArith p) const {return (p.x != x);}
     bool operator <  (LitArith p) const { return x < p.x;  } // '<' makes p, ~p adjacent in the ordering.
 };
 inline LitArith mkLit(Var lit,int varname,ArithOperator optr,double value, bool sign){
@@ -81,10 +81,13 @@ inline LitArith mkLit(Var lit,int varname,ArithOperator optr,double value, bool 
 	return q;
 }
 //need to be changed
-inline  LitArith  operator ~(LitArith p)              { LitArith q; q.x = p.x ^ 1; return q; }
-inline  LitArith  operator ^(LitArith p, bool b)      { LitArith q; q.x = p.x ^ (unsigned int)b; return q; }
+inline  LitArith  operator ~(LitArith p)              { LitArith q; q.x = p.x ^ 1; q.o = p.o; q.v = p.v; q.vn = p.vn; return q; }
+inline  LitArith  operator ^(LitArith p, bool b)      { LitArith q; q.x = p.x ^ (unsigned int)b; q.o = p.o; q.v = p.v; q.vn = p.vn; return q; }
+
+
+//什么情况下会返回-1？？？？？
 inline  bool sign      (LitArith p)              { return p.x & 1; }
-inline  int  var       (LitArith p)              { return p.x >> 1; }
+inline  int  var       (LitArith p)              { return p.x; }
 
 const LitArith lit_Undef = { -2 };  // }- Useful special constants.
 const LitArith lit_Error = { -1 };  // }
@@ -168,13 +171,17 @@ inline lbool toLbool(int   v) { return lbool((uint8_t)v);  }
 
 struct MkIndexLit {
 	vec<LitArith>::Size operator()(int x) const {
-		//printf("mamamam::::  %d   \n",vec<LitArith>::Size(l.x));
-		return vec<LitArith>::Size(x); }
+	return vec<LitArith>::Size(x); }
+};
+
+struct MkIndexLitArith {
+	vec<LitArith>::Size operator () (LitArith lit) const{
+		return vec<LitArith>::Size(lit.x);}
 };
 
 template<class T> class VMap : public IntMap<Var, T>{};
 template<class T> class LMap : public IntMap<LitArith, T, MkIndexLit>{};
-class LSet : public IntSet<LitArith, MkIndexLit>{};
+class LSet : public IntSet<LitArith, MkIndexLitArith>{};
 //=================================================================================================
 // OccLists -- a class for maintaining occurence lists with lazy deletion:
 
@@ -201,7 +208,10 @@ public:
     Vec&  operator[](const K& idx){
 		return occs[idx];
 	}
-    Vec&  lookup    (const K& idx){ if (dirty[idx]) clean(idx); return occs[idx]; }
+    Vec&  lookup    (const K& idx){
+     if (dirty[idx])
+		clean(idx);
+     return occs[idx]; }
 
     void  cleanAll  ();
     void  clean     (const K& idx);

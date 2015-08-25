@@ -111,7 +111,7 @@ Var Solver::newVar(lbool upol, bool dvar)
 // Creates a new SAT variable in the solver. If 'decision' is cleared, variable will not be
 // used as a decision variable (NOTE! This has effects on the meaning of a SATISFIABLE result).
 //
-Var Solver::newVar(LitArith &lit, lbool upol)
+Var Solver::newVar(LitArith &lit, lbool upol,bool dvar)
 {
     Var v;
     if (free_vars.size() > 0){
@@ -121,9 +121,9 @@ Var Solver::newVar(LitArith &lit, lbool upol)
         v = next_var++;
 	//判断第序号为vn的变量是否已经初始化watches
     if(lit.vn + 1 >= VarName.size()) {
-		printf("init ::   %d  ::",lit.vn);
+//		printf("init ::   %d  ::",lit.vn);
 		watches  .init(lit.vn);
-		bounds.push(VarBound(lit.vn, 0, 0 ));
+		bounds.push(VarBound(lit.vn, -DBL_MAX, DBL_MAX ));
     }
     assigns  .insert(v, l_Undef);
     vardata  .insert(v, mkVarData(CRef_Undef, 0));
@@ -133,7 +133,7 @@ Var Solver::newVar(LitArith &lit, lbool upol)
     user_pol .insert(v, upol);
     decision .reserve(v);
     trail    .capacity(v+1);
- //   setDecisionVar(v, dvar);
+    setDecisionVar(v, dvar);
     return v;
 }
 bool Solver::addClause_(vec<LitArith>& ps)
@@ -154,11 +154,12 @@ bool Solver::addClause_(vec<LitArith>& ps)
     if (ps.size() == 0)
         return ok = false;
     else if (ps.size() == 1){
-        uncheckedEnqueue(ps[0]);
-        return ok = (propagate() == CRef_Undef);
+		if(AssertBounds(ps[0])==l_False) return ok = false;
+
+		uncheckedEnqueue(ps[0]);
+		return ok = (propagate() == CRef_Undef);
     }else{
         CRef cr = ca.alloc(ps, false);
-    //    printf("\n%d",cr);
         clauses.push(cr);
         attachClause(cr);
     }
@@ -176,14 +177,17 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
 
     // Check if clause is satisfied and remove false/duplicate literals:
     // ignored temporary
-    /*
-    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
-        if (value(ps[i]) == l_True || ps[i] == ~p)
-            return true;
-        else if (value(ps[i]) != l_False && ps[i] != p)
-            ps[j++] = p = ps[i];
-    ps.shrink(i - j);
-    */
+//    sort(ps);
+//    LitArith p; int i, j;
+//    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
+//        if (value(ps[i]) == l_True || ps[i] == ~p)
+//            return true;
+//        else if (value(ps[i]) != l_False && ps[i] != p)
+//            ps[j++] = p = ps[i];
+//    ps.shrink(i - j);
+
+	//displayWatchList();
+	//displayClauses();
 
     if (ps.size() == 0)
         return ok = false;
@@ -195,14 +199,18 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
         CRef cr = ca.alloc(ps, false);
         clauses.push(cr);
         attachClause(cr);
+//	build a map for var x to its clause
+		Clause &c = ca[cr];
+		litPosition.push(next_var);
     }
 
     return true;
 }
 void Solver::uncheckedEnqueue(LitArith p, CRef from)
 {
-    assert(value(p) == l_Undef);
-    assigns[var(p)] = lbool(!sign(p));
+	printf("Unchecked enqueue :%d\n",p.x);
+    //assert(value(p) == l_Undef);
+    assigns[var(p)] = lbool(true);
     vardata[var(p)] = mkVarData(from, decisionLevel());
     trail.push_(p);
 }
@@ -216,13 +224,13 @@ LitArith Solver::pickBranchLit()
     Var next = var_Undef;
 
     // Random decision:
-    if (drand(random_seed) < random_var_freq && !order_heap.empty()){
-        next = order_heap[irand(random_seed,order_heap.size())];
-        if (value(next) == l_Undef && decision[next])
-            rnd_decisions++; }
-
+//    if (drand(random_seed) < random_var_freq && !order_heap.empty()){
+//        next = order_heap[irand(random_seed,order_heap.size())];
+//        if (value(next) == l_Undef && decision[next])
+//            rnd_decisions++; }
+//
     // Activity based decision:
-    while (next == var_Undef || value(next) != l_Undef || !decision[next])
+    while (next == var_Undef || value(findLiteral(next)) != l_Undef || !decision[next])
         if (order_heap.empty()){
             next = var_Undef;
             break;
@@ -233,11 +241,14 @@ LitArith Solver::pickBranchLit()
     if (next == var_Undef)
         return lit_Undef;
     else if (user_pol[next] != l_Undef)
-        return mkLit(next,0,OPTR_EQ,0, user_pol[next] == l_True);
+        return findLiteral(next);
+        //mkLit(next,0,OPTR_EQ,0, user_pol[next] == l_True);
     else if (rnd_pol)
-        return mkLit(next,0,OPTR_EQ,0,  drand(random_seed) < 0.5);
+        return findLiteral(next);
+        //mkLit(next,0,OPTR_EQ,0,  drand(random_seed) < 0.5);
     else
-        return mkLit(next,0,OPTR_EQ,0,  polarity[next]);
+        return findLiteral(next);
+        //mkLit(next,0,OPTR_EQ,0,  polarity[next]);
 }
 /*_________________________________________________________________________________________________
 |
@@ -492,29 +503,44 @@ CRef Solver::propagate()
 {
     CRef    confl     = CRef_Undef;
     int     num_props = 0;
-/*
+
     while (qhead < trail.size()){
         LitArith            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
-        vec<Watcher>&  ws  = watches.lookup(p);
+
+
+		if(AssertBounds(p)==l_False) {
+			confl = vardata[var(p)].reason	;
+			if(confl == CRef_Undef) confl  = 1;
+			return confl;
+		}
+
+
+        vec<Watcher>&  ws  = watches.lookup(p.vn);
+        //displayOneWatch(ws);
         Watcher        *i, *j, *end;
         num_props++;
 
         for (i = j = (Watcher*)ws, end = i + ws.size();  i != end;){
             // Try to avoid inspecting the clause:
             LitArith blocker = i->blocker;
-            if (value(blocker) == l_True){
+            if (value(blocker) != l_False){
                 *j++ = *i++; continue; }
 
-            // Make sure the false literal is data[1]:
+            // Make sure the false literal is data[1]:ĵl
             CRef     cr        = i->cref;
             Clause&  c         = ca[cr];
-            LitArith      false_lit = ~p;
-            if (c[0] == false_lit)
-                c[0] = c[1], c[1] = false_lit;
-            assert(c[1] == false_lit);
+
+			//相当于在交换clause的位置,把false换到c[1]的位置
+			LitArith false_lit;
+			if(value(c[0])==l_False){
+				false_lit = c[0];
+				c[0] = c[1];c[1] = false_lit;
+			}else if(value(c[1])==l_False){
+				false_lit = c[1];
+			}
             i++;
 
-            // If 0th watch is true, then clause is already satisfied.
+           // If 0th watch is true, then clause is already satisfied.
             LitArith     first = c[0];
             Watcher w     = Watcher(cr, first);
             if (first != blocker && value(first) == l_True){
@@ -524,12 +550,13 @@ CRef Solver::propagate()
             for (int k = 2; k < c.size(); k++)
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
-                    watches[~c[1]].push(w);
+                    watches[c[1].vn].push(w);
                     goto NextClause; }
 
             // Did not find watch -- clause is unit under assignment:
             *j++ = w;
             if (value(first) == l_False){
+				printf("conflict detected %d",cr);
                 confl = cr;
                 qhead = trail.size();
                 // Copy the remaining watches:
@@ -537,14 +564,13 @@ CRef Solver::propagate()
                     *j++ = *i++;
             }else
                 uncheckedEnqueue(first, cr);
-
         NextClause:;
         }
-        ws.shrink(i - j);
+        ws.shrink(i - j);//removed useless watches
     }
     propagations += num_props;
     simpDB_props -= num_props;
-*/
+
     return confl;
 }
 
@@ -568,38 +594,38 @@ bool Solver::simplify()
         return true;
 
     // Remove satisfied clauses:
-    removeSatisfied(learnts);
-    if (remove_satisfied){       // Can be turned off.
-        removeSatisfied(clauses);
-
-        // TODO: what todo in if 'remove_satisfied' is false?
-
-        // Remove all released variables from the trail:
-        for (int i = 0; i < released_vars.size(); i++){
-            assert(seen[released_vars[i]] == 0);
-            seen[released_vars[i]] = 1;
-        }
-
-        int i, j;
-        for (i = j = 0; i < trail.size(); i++)
-            if (seen[var(trail[i])] == 0)
-                trail[j++] = trail[i];
-        trail.shrink(i - j);
-        //printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
-        qhead = trail.size();
-
-        for (int i = 0; i < released_vars.size(); i++)
-            seen[released_vars[i]] = 0;
-
-        // Released variables are now ready to be reused:
-        append(released_vars, free_vars);
-        released_vars.clear();
-    }
-    checkGarbage();
+//    removeSatisfied(learnts);
+//    if (remove_satisfied){       // Can be turned off.
+//        removeSatisfied(clauses);
+//
+//        // TODO: what todo in if 'remove_satisfied' is false?
+//
+//        // Remove all released variables from the trail:
+//        for (int i = 0; i < released_vars.size(); i++){
+//            assert(seen[released_vars[i]] == 0);
+//            seen[released_vars[i]] = 1;
+//        }
+//
+//        int i, j;
+//        for (i = j = 0; i < trail.size(); i++)
+//            if (seen[var(trail[i])] == 0)
+//                trail[j++] = trail[i];
+//        trail.shrink(i - j);
+//        //printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
+//        qhead = trail.size();
+//
+//        for (int i = 0; i < released_vars.size(); i++)
+//            seen[released_vars[i]] = 0;
+//
+//        // Released variables are now ready to be reused:
+//        append(released_vars, free_vars);
+//        released_vars.clear();
+//    }
+ //   checkGarbage();
     rebuildOrderHeap();
-
-    simpDB_assigns = nAssigns();
-    simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
+//
+//    simpDB_assigns = nAssigns();
+//    simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
 
     return true;
 }
@@ -633,33 +659,35 @@ lbool Solver::search(int nof_conflicts)
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
-            analyze(confl, learnt_clause, backtrack_level);
+//            analyze(confl, learnt_clause, backtrack_level);
             cancelUntil(backtrack_level);
 
-            if (learnt_clause.size() == 1){
-                uncheckedEnqueue(learnt_clause[0]);
-            }else{
-                CRef cr = ca.alloc(learnt_clause, true);
-                learnts.push(cr);
-                attachClause(cr);
-                claBumpActivity(ca[cr]);
-                uncheckedEnqueue(learnt_clause[0], cr);
-            }
 
-            varDecayActivity();
-            claDecayActivity();
-
-            if (--learntsize_adjust_cnt == 0){
-                learntsize_adjust_confl *= learntsize_adjust_inc;
-                learntsize_adjust_cnt    = (int)learntsize_adjust_confl;
-                max_learnts             *= learntsize_inc;
-
-                if (verbosity >= 1)
-                    printf("| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n",
-                           (int)conflicts,
-                           (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int)clauses_literals,
-                           (int)max_learnts, nLearnts(), (double)learnts_literals/nLearnts(), progressEstimate()*100);
-            }
+	// IGNORE clause learing first
+//            if (learnt_clause.size() == 1){
+//                uncheckedEnqueue(learnt_clause[0]);
+//            }else{
+//                CRef cr = ca.alloc(learnt_clause, true);
+//                learnts.push(cr);
+//                attachClause(cr);
+//                claBumpActivity(ca[cr]);
+//                uncheckedEnqueue(learnt_clause[0], cr);
+//            }
+//
+//            varDecayActivity();
+//            claDecayActivity();
+//
+//            if (--learntsize_adjust_cnt == 0){
+//                learntsize_adjust_confl *= learntsize_adjust_inc;
+//                learntsize_adjust_cnt    = (int)learntsize_adjust_confl;
+//                max_learnts             *= learntsize_inc;
+//
+//                if (verbosity >= 1)
+//                    printf("| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n",
+//                           (int)conflicts,
+//                           (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int)clauses_literals,
+//                           (int)max_learnts, nLearnts(), (double)learnts_literals/nLearnts(), progressEstimate()*100);
+//            }
 
         }else{
             // NO CONFLICT
@@ -714,8 +742,8 @@ void Solver::attachClause(CRef cr){
 
     const Clause& c = ca[cr];
     assert(c.size() > 1);
-    for(int i=0;i<c.size();i++)
-		watches[(c[i]).vn].push(Watcher(cr, c[i]));
+	watches[(c[0]).vn].push(Watcher(cr, c[1]));
+	watches[(c[1]).vn].push(Watcher(cr, c[0]));
     if (c.learnt()) num_learnts++, learnts_literals += c.size();
     else            num_clauses++, clauses_literals += c.size();
 }
@@ -762,7 +790,7 @@ void Solver::rebuildOrderHeap()
 {
     vec<Var> vs;
     for (Var v = 0; v < nVars(); v++)
-        if (decision[v] && value(v) == l_Undef)
+        if (decision[v] && value(findLiteral(v)) == l_Undef)
             vs.push(v);
     order_heap.build(vs);
 }
@@ -839,7 +867,7 @@ static double luby(double y, int x){
 
 // NOTE: assumptions passed in member-variable 'assumptions'.
 lbool Solver::solve_()
-{/*
+{
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
@@ -883,8 +911,7 @@ lbool Solver::solve_()
 
     cancelUntil(0);
     return status;
-    */
-    return l_False;//add temp
+
 }
 
 //=================================================================================================

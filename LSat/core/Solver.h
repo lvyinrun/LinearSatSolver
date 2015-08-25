@@ -61,12 +61,35 @@ protected:
     };
 
 public:
+// personal defined variables
+
+	vec<int> litPosition;
+
+
+	LitArith findLiteral(int x){
+		int lower = 0, upper = litPosition.size();
+		int middle = -1;
+		while(lower < upper-1 ){
+			middle = ( lower + upper )/2;
+			if(litPosition[middle]>x) upper = middle;
+			else if(litPosition[middle]<x) lower = middle;
+			else if(litPosition[middle]==x) {lower = middle;break;}
+		}
+		if(litPosition[lower]<=x) lower++;
+		Clause &c = ca[clauses[lower]];
+		for(int i=0;i<c.size();i++){
+			if(c[i].x==x) return c[i];
+		}
+
+		return lit_Undef;
+
+	}
     Solver();
     virtual ~Solver();
     // Problem specification:
     //
     Var     newVar    (lbool upol = l_Undef, bool dvar = true); // Add a new variable with parameters specifying variable mode.
-	Var     newVar    (LitArith &lit, lbool upol = l_Undef);
+	Var     newVar    (LitArith &lit, lbool upol = l_Undef, bool dvar = true);
     bool    addClause (const vec<LitArith>& ps);                     // Add a clause to the solver.
     bool    addEmptyClause();                                   // Add the empty clause, making the solver contradictory.
     bool    addClause (LitArith p);                                  // Add a unit clause to the solver.
@@ -240,6 +263,19 @@ public:
     int      level            (Var x) const;
     double   progressEstimate ()      const; // DELETE THIS ?? IT'S NOT VERY USEFUL ...
 
+	//new options
+	lbool AssertBounds(LitArith la){
+		if(la.o==OPTR_GRTEQ){
+			if(la.v<=bounds[la.vn].lower) return lbool(true);
+			else if(la.v<=bounds[la.vn].upper) {bounds[la.vn].lower = la.v;return lbool(true);}
+		}else if(la.o == OPTR_LESSEQ){
+			if(la.v >= bounds[la.vn].upper) return lbool(true);
+			else if(la.v>=bounds[la.vn].lower){bounds[la.vn].upper = la.v;return lbool(true);}
+		}
+		return lbool(false);
+	}
+
+
     //Arith helpers
     void displayClauses(){
 		printf("\n\n\n****************   Display Clause  ***************\n");
@@ -254,7 +290,7 @@ public:
 		int k = cla.header.size;
 		printf(" size:%d\n",k);
 		for(int i=0;i<k;i++){
-			printf("  %s %d %f\t",VarName[cla.data[i].lit.vn].c_str(),cla.data[i].lit.o,cla.data[i].lit.v);
+			printf(" %d %s %d %f\t",cla.data[i].lit.x, VarName[cla.data[i].lit.vn].c_str(),cla.data[i].lit.o,cla.data[i].lit.v);
 		}
 		printf("\n");
     }
@@ -262,12 +298,28 @@ public:
     void displayWatchList(){
 		printf("\n\n\n****************   Display Watches  ***************\n");
 		for(int i=0;i<VarName.size();i++){
-			vec<Watcher> wc = watches[i];
+			vec<Watcher> ws = watches.lookup(i);
 			printf(" order:%d\n",i);
-			for(int j=0;j<wc.size();j++){
+			Watcher        *j, *end;
+			for(j = (Watcher*)ws, end = j + ws.size();  j != end;j++){
+				printf("  %d %s %d %f\t",j->cref,VarName[j->blocker.vn].c_str(),j->blocker.o,j->blocker.v);
+			}
+			printf("\n");
+		};
+    }
+
+    void displayOneWatch(vec<Watcher> & wc){
+		printf("\n\n\n****************   Display One Watch  ***************\n");
+		for(int j=0;j<wc.size();j++){
 				printf("  %d %s %d %f\t",wc[j].cref,VarName[wc[j].blocker.vn].c_str(),wc[j].blocker.o,wc[j].blocker.v);
 			}printf("\n");
-		};
+    }
+
+    void displayBounds(){
+		printf("\n\n\n****************   Display Bounds ***************\n");
+		for(int i=0;i<VarName.size();i++){
+			printf("%ef\t%s\t%ef\n",bounds[i].lower,VarName[i].c_str(),bounds[i].upper);
+		}
     }
 
     // Static helpers:
@@ -361,7 +413,20 @@ inline int      Solver::decisionLevel ()      const
 }
 
 inline lbool    Solver::value         (Var x) const   { return assigns[x]; }
-inline lbool    Solver::value         (LitArith p) const   { return assigns[var(p)] ^ sign(p); }
+inline lbool    Solver::value         (LitArith p) const   {
+	if(p==lit_Undef) return l_True;
+	if(p.o == OPTR_GRTEQ ){
+		if(p.v<=bounds[p.vn].lower) return lbool(true);
+		else if(p.v >= bounds[p.vn].upper) return lbool(false);
+		else return l_Undef;
+	}else if(p.o == OPTR_LESSEQ){
+		if(p.v <=bounds[p.vn].lower) return lbool(false);
+		else if(p.v >=bounds[p.vn].upper) return lbool(true);
+		else return l_Undef;
+	}
+	return l_Undef;
+ //return assigns[var(p)];
+ }
 
 
 

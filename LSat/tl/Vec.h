@@ -89,7 +89,9 @@ void vec<T,_Size>::clear(bool dealloc) {
     if (data != NULL){
         for (Size i = 0; i < sz; i++) data[i].~T();
         sz = 0;
-        if (dealloc) free(data), data = NULL, cap = 0; } }
+        //这里为什么不能正常的析构
+        //if (dealloc) free(data), data = NULL, cap = 0;
+      } }
 
 
 template<class T, class _Size>
