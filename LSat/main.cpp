@@ -25,6 +25,7 @@ int main(int argc, char **argv)
 
 	S.displayWatchList();
 	S.displayClauses();
+	S.displayBounds();
 
 
 	if(!S.simplify())     cout << "\n\Failed" << endl;
@@ -32,7 +33,8 @@ int main(int argc, char **argv)
 	vec<LitArith> dummy;
 	//int k = S.order_heap.size();
 	lbool ret = S.solveLimited(dummy);
-
+	S.displayBounds();
+	if(S.ok==true) printf("TRUE");else printf("FALSE");
 	printf(ret == l_True ? "SATISFIABLE\n" : ret == l_False ? "UNSATISFIABLE\n" : "INDETERMINATE\n");
 	if (ret == l_True)
         {

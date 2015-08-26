@@ -178,13 +178,11 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
     // Check if clause is satisfied and remove false/duplicate literals:
     // ignored temporary
 //    sort(ps);
-//    LitArith p; int i, j;
-//    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
-//        if (value(ps[i]) == l_True || ps[i] == ~p)
-//            return true;
-//        else if (value(ps[i]) != l_False && ps[i] != p)
-//            ps[j++] = p = ps[i];
-//    ps.shrink(i - j);
+    for (i = j = 0; i < ps.size(); i++)
+        if (value(ps[i]) == l_False )
+            ps[j] = ps[i];
+		else ps[j++] = ps[i];
+    ps.shrink(i - j);
 
 	//displayWatchList();
 	//displayClauses();
@@ -521,9 +519,13 @@ CRef Solver::propagate()
         num_props++;
 
         for (i = j = (Watcher*)ws, end = i + ws.size();  i != end;){
-            // Try to avoid inspecting the clause:
+			//ArithLiteral有多种状态，仅当子句中含x的变量为假时才需要进行propagate
+			if (value(i->self) != l_False){
+                *j++ = *i++; continue; }
+
+            // Try to avoid inspecting the clause:(the clause is already satisfied)
             LitArith blocker = i->blocker;
-            if (value(blocker) != l_False){
+			if (value(i->blocker) == l_True){
                 *j++ = *i++; continue; }
 
             // Make sure the false literal is data[1]:ĵl
@@ -542,7 +544,7 @@ CRef Solver::propagate()
 
            // If 0th watch is true, then clause is already satisfied.
             LitArith     first = c[0];
-            Watcher w     = Watcher(cr, first);
+            Watcher w     = Watcher(cr, i->self,first);
             if (first != blocker && value(first) == l_True){
                 *j++ = w; continue; }
 
@@ -550,7 +552,7 @@ CRef Solver::propagate()
             for (int k = 2; k < c.size(); k++)
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
-                    watches[c[1].vn].push(w);
+                    watches[c[1].vn].push(Watcher(cr, c[1],first));
                     goto NextClause; }
 
             // Did not find watch -- clause is unit under assignment:
@@ -595,37 +597,37 @@ bool Solver::simplify()
 
     // Remove satisfied clauses:
 //    removeSatisfied(learnts);
-//    if (remove_satisfied){       // Can be turned off.
-//        removeSatisfied(clauses);
-//
-//        // TODO: what todo in if 'remove_satisfied' is false?
-//
-//        // Remove all released variables from the trail:
-//        for (int i = 0; i < released_vars.size(); i++){
-//            assert(seen[released_vars[i]] == 0);
-//            seen[released_vars[i]] = 1;
-//        }
-//
-//        int i, j;
-//        for (i = j = 0; i < trail.size(); i++)
-//            if (seen[var(trail[i])] == 0)
-//                trail[j++] = trail[i];
-//        trail.shrink(i - j);
-//        //printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
-//        qhead = trail.size();
-//
-//        for (int i = 0; i < released_vars.size(); i++)
-//            seen[released_vars[i]] = 0;
-//
-//        // Released variables are now ready to be reused:
-//        append(released_vars, free_vars);
-//        released_vars.clear();
-//    }
- //   checkGarbage();
+    if (remove_satisfied){       // Can be turned off.
+        removeSatisfied(clauses);
+
+       // TODO: what todo in if 'remove_satisfied' is false?
+
+        // Remove all released variables from the trail:
+        for (int i = 0; i < released_vars.size(); i++){
+            assert(seen[released_vars[i]] == 0);
+            seen[released_vars[i]] = 1;
+        }
+
+        int i, j;
+        for (i = j = 0; i < trail.size(); i++)
+            if (seen[var(trail[i])] == 0)
+                trail[j++] = trail[i];
+        trail.shrink(i - j);
+        //printf("trail.size()= %d, qhead = %d\n", trail.size(), qhead);
+        qhead = trail.size();
+
+        for (int i = 0; i < released_vars.size(); i++)
+            seen[released_vars[i]] = 0;
+
+        // Released variables are now ready to be reused:
+        append(released_vars, free_vars);
+        released_vars.clear();
+    }
+    checkGarbage();
     rebuildOrderHeap();
-//
-//    simpDB_assigns = nAssigns();
-//    simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
+
+    simpDB_assigns = nAssigns();
+    simpDB_props   = clauses_literals + learnts_literals;   // (shouldn't depend on stats really, but it will do for now)
 
     return true;
 }
@@ -688,7 +690,6 @@ lbool Solver::search(int nof_conflicts)
 //                           (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int)clauses_literals,
 //                           (int)max_learnts, nLearnts(), (double)learnts_literals/nLearnts(), progressEstimate()*100);
 //            }
-
         }else{
             // NO CONFLICT
             if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
@@ -742,8 +743,8 @@ void Solver::attachClause(CRef cr){
 
     const Clause& c = ca[cr];
     assert(c.size() > 1);
-	watches[(c[0]).vn].push(Watcher(cr, c[1]));
-	watches[(c[1]).vn].push(Watcher(cr, c[0]));
+	watches[(c[0]).vn].push(Watcher(cr,c[0], c[1]));
+	watches[(c[1]).vn].push(Watcher(cr,c[1], c[0]));
     if (c.learnt()) num_learnts++, learnts_literals += c.size();
     else            num_clauses++, clauses_literals += c.size();
 }
@@ -753,8 +754,9 @@ void Solver::detachClause(CRef cr, bool strict){
 
     // Strict or lazy detaching:
     if (strict){
-        remove(watches[(c[0]).x], Watcher(cr, c[0]));
-        remove(watches[(c[0]).x], Watcher(cr, c[0]));
+    //	this need to be modified*******************
+        remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
+        remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
     }else{
         watches.smudge(c[0].x);
         watches.smudge(c[1].x);
@@ -788,11 +790,13 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 void Solver::rebuildOrderHeap()
 {
+	printf("\nrebuilding order heap ");
     vec<Var> vs;
     for (Var v = 0; v < nVars(); v++)
         if (decision[v] && value(findLiteral(v)) == l_Undef)
             vs.push(v);
     order_heap.build(vs);
+    printf("\t size:%d \n",order_heap.size());
 }
 
 void Solver::removeClause(CRef cr) {
@@ -813,16 +817,28 @@ bool Solver::satisfied(const Clause& c) const {
 //
 void Solver::cancelUntil(int level) {
     if (decisionLevel() > level){
+
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
             Var      x  = var(trail[c]);
             assigns [x] = l_Undef;
-            if (phase_saving > 1 || (phase_saving == 1 && c > trail_lim.last()))
-                polarity[x] = sign(trail[c]);
+    //        if (phase_saving > 1 || (phase_saving == 1 && c > trail_lim.last()))
+     //           polarity[x] = sign(trail[c]);
             insertVarOrder(x); }
         qhead = trail_lim[level];
         trail.shrink(trail.size() - trail_lim[level]);
         trail_lim.shrink(trail_lim.size() - level);
-    } }
+
+		while(true){
+			oldBound b = trail_bound.last();
+			if(b.dl>level){
+				if(b.dir==0) bounds[b.x].lower = b.bound;
+				else if(b.dir==1) bounds[b.x].upper = b.bound;
+
+				trail_bound.pop();
+			}else break;
+		}
+    }
+}
 
 double Solver::progressEstimate() const
 {

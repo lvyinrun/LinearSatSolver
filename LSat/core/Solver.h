@@ -26,8 +26,9 @@ protected:
     struct Watcher
     {
         CRef cref;
+        LitArith self;
         LitArith  blocker;
-        Watcher(CRef cr, LitArith p) : cref(cr), blocker(p) {}
+        Watcher(CRef cr, LitArith s, LitArith p) : cref(cr), self(s), blocker(p) {}
         bool operator==(const Watcher& w) const
         {
             return cref == w.cref;
@@ -59,6 +60,7 @@ protected:
         LitArith      l;
         ShrinkStackElem(uint32_t _i, LitArith _l) : i(_i), l(_l){}
     };
+
 
 public:
 // personal defined variables
@@ -117,6 +119,8 @@ public:
     vec<CRef>           clauses;          // List of problem clauses.
     vec<CRef>           learnts;          // List of learnt clauses.
     vec<LitArith>            trail;            // Assignment stack; stores all assigments made in the order they were made.
+	vec<oldBound> trail_bound;
+
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
     vec<LitArith>            assumptions;      // Current set of assumptions provided to solve by the user.
 
@@ -267,10 +271,18 @@ public:
 	lbool AssertBounds(LitArith la){
 		if(la.o==OPTR_GRTEQ){
 			if(la.v<=bounds[la.vn].lower) return lbool(true);
-			else if(la.v<=bounds[la.vn].upper) {bounds[la.vn].lower = la.v;return lbool(true);}
+			else if(la.v<=bounds[la.vn].upper) {
+				trail_bound.push(mkOldBound(decisionLevel(),la.vn,0,bounds[la.vn].lower));
+				bounds[la.vn].lower = la.v;
+				return lbool(true);
+			}
 		}else if(la.o == OPTR_LESSEQ){
 			if(la.v >= bounds[la.vn].upper) return lbool(true);
-			else if(la.v>=bounds[la.vn].lower){bounds[la.vn].upper = la.v;return lbool(true);}
+			else if(la.v>=bounds[la.vn].lower){
+				trail_bound.push(mkOldBound(decisionLevel(),la.vn,1,bounds[la.vn].upper));
+				bounds[la.vn].upper = la.v;
+				return lbool(true);
+			}
 		}
 		return lbool(false);
 	}
@@ -290,7 +302,7 @@ public:
 		int k = cla.header.size;
 		printf(" size:%d\n",k);
 		for(int i=0;i<k;i++){
-			printf(" %d %s %d %f\t",cla.data[i].lit.x, VarName[cla.data[i].lit.vn].c_str(),cla.data[i].lit.o,cla.data[i].lit.v);
+			printf(" %d %s %s %f\t",cla.data[i].lit.x, VarName[cla.data[i].lit.vn].c_str(),cla.data[i].lit.o==13?"<=":">=",cla.data[i].lit.v);
 		}
 		printf("\n");
     }
@@ -302,7 +314,7 @@ public:
 			printf(" order:%d\n",i);
 			Watcher        *j, *end;
 			for(j = (Watcher*)ws, end = j + ws.size();  j != end;j++){
-				printf("  %d %s %d %f\t",j->cref,VarName[j->blocker.vn].c_str(),j->blocker.o,j->blocker.v);
+				printf("  %d %d %s %s %f\t",j->cref,j->blocker.x, VarName[j->blocker.vn].c_str(),j->blocker.o==13?"<=":">=",j->blocker.v);
 			}
 			printf("\n");
 		};
@@ -311,7 +323,7 @@ public:
     void displayOneWatch(vec<Watcher> & wc){
 		printf("\n\n\n****************   Display One Watch  ***************\n");
 		for(int j=0;j<wc.size();j++){
-				printf("  %d %s %d %f\t",wc[j].cref,VarName[wc[j].blocker.vn].c_str(),wc[j].blocker.o,wc[j].blocker.v);
+				printf("  %d %s %s %f\t",wc[j].cref,VarName[wc[j].blocker.vn].c_str(),wc[j].blocker.o==13?"<=":">=",wc[j].blocker.v);
 			}printf("\n");
     }
 

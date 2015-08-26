@@ -1,9 +1,34 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Debug" />
+	<File name="parse/ParseSMT.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="13130" topLine="402" />
+		</Cursor>
+	</File>
+	<File name="tl/Vec.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2541" topLine="50" />
+		</Cursor>
+	</File>
+	<File name="parse/ParseUtils.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="795" topLine="78" />
+		</Cursor>
+	</File>
 	<File name="main.cpp" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="665" topLine="3" />
+			<Cursor1 position="627" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="core/Solver.cpp" open="1" top="1" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="26198" topLine="775" />
+		</Cursor>
+	</File>
+	<File name="core/Solver.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="684" topLine="18" />
 		</Cursor>
 	</File>
 	<File name="tl/Xalloc.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -16,29 +41,9 @@
 			<Cursor1 position="373" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="core/Solver.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2145" topLine="449" />
-		</Cursor>
-	</File>
-	<File name="core/SolverTypes.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="2922" topLine="76" />
-		</Cursor>
-	</File>
 	<File name="tl/Alloc.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="2562" topLine="62" />
-		</Cursor>
-	</File>
-	<File name="parse/ParseUtils.h" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="795" topLine="78" />
-		</Cursor>
-	</File>
-	<File name="tl/Vec.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="3521" topLine="74" />
+			<Cursor1 position="2562" topLine="47" />
 		</Cursor>
 	</File>
 	<File name="tl/Heap.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -46,19 +51,14 @@
 			<Cursor1 position="1859" topLine="0" />
 		</Cursor>
 	</File>
+	<File name="core/SolverTypes.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2160" topLine="49" />
+		</Cursor>
+	</File>
 	<File name="tl/IntMap.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="186" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="parse/ParseSMT.h" open="1" top="1" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="485" topLine="22" />
-		</Cursor>
-	</File>
-	<File name="core/Solver.cpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="6815" topLine="176" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

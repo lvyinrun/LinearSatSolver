@@ -56,7 +56,22 @@ struct VarBound{
 	double upper;
 	VarBound(int v, double l, double r):var(v),lower(l),upper(r){};
 };
+    struct oldBound{
+		int dl;//decision level;
+		int x;//variable
+		int dir;// 0: lower;1 upper;
+		double bound;
+		friend oldBound mkOldBound(int dl,int x, int dir, double bound);
+    };
 
+inline oldBound mkOldBound(int dl,int x, int dir, double bound){
+	oldBound ob;
+	ob.dl = dl;
+	ob.x = x;
+	ob.dir = dir;
+	ob.bound = bound;
+	return ob;
+}
 //Arith
 struct LitArith{
 	int x;//lit order
@@ -70,6 +85,7 @@ struct LitArith{
 	bool operator != (LitArith p) const {return (p.x != x);}
     bool operator <  (LitArith p) const { return x < p.x;  } // '<' makes p, ~p adjacent in the ordering.
 };
+
 inline LitArith mkLit(Var lit,int varname,ArithOperator optr,double value, bool sign){
 	LitArith q;
 	q.x = lit;
