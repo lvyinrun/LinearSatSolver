@@ -23,17 +23,22 @@ int main(int argc, char **argv)
     gzclose(in);
     FILE* res = (argc >= 3) ? fopen(argv[2], "wb") : NULL;
 
-	S.displayWatchList();
-	S.displayClauses();
-	S.displayBounds();
-
 
 	if(!S.simplify())     cout << "\n\Failed" << endl;
 	else cout<<"\n\nstart solving\n\n"<<endl;
 	vec<LitArith> dummy;
 	//int k = S.order_heap.size();
-	lbool ret = S.solveLimited(dummy);
 	S.displayBounds();
+	S.displayClauses();
+	S.displayWatchList();
+	lbool ret = S.solveLimited(dummy);
+
+
+
+
+
+
+
 	if(S.ok==true) printf("TRUE");else printf("FALSE");
 	printf(ret == l_True ? "SATISFIABLE\n" : ret == l_False ? "UNSATISFIABLE\n" : "INDETERMINATE\n");
 	if (ret == l_True)

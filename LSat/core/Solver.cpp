@@ -206,7 +206,7 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
 }
 void Solver::uncheckedEnqueue(LitArith p, CRef from)
 {
-	printf("Unchecked enqueue :%d\n",p.x);
+	printf("Unchecked enqueue :%d   ** DecisionLevel:%d\n",p.x,decisionLevel());
     //assert(value(p) == l_Undef);
     assigns[var(p)] = lbool(true);
     vardata[var(p)] = mkVarData(from, decisionLevel());
@@ -501,10 +501,8 @@ CRef Solver::propagate()
 {
     CRef    confl     = CRef_Undef;
     int     num_props = 0;
-
     while (qhead < trail.size()){
         LitArith            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
-
 
 		if(AssertBounds(p)==l_False) {
 			confl = vardata[var(p)].reason	;
@@ -512,9 +510,7 @@ CRef Solver::propagate()
 			return confl;
 		}
 
-
         vec<Watcher>&  ws  = watches.lookup(p.vn);
-        //displayOneWatch(ws);
         Watcher        *i, *j, *end;
         num_props++;
 
@@ -623,7 +619,14 @@ bool Solver::simplify()
         append(released_vars, free_vars);
         released_vars.clear();
     }
+
+
     checkGarbage();
+
+    displayClauses();
+    displayWatchList();
+    displayBounds();
+    rebuildLitPosition();
     rebuildOrderHeap();
 
     simpDB_assigns = nAssigns();
@@ -661,7 +664,8 @@ lbool Solver::search(int nof_conflicts)
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
-//            analyze(confl, learnt_clause, backtrack_level);
+            //analyze(confl, learnt_clause, backtrack_level);
+            backtrack_level = decisionLevel()-1;
             cancelUntil(backtrack_level);
 
 
@@ -733,6 +737,7 @@ lbool Solver::search(int nof_conflicts)
             }
 
             // Increase decision level and enqueue 'next'
+            printf("\ndecisionign new Level\n");
             newDecisionLevel();
             uncheckedEnqueue(next);
         }
@@ -755,11 +760,11 @@ void Solver::detachClause(CRef cr, bool strict){
     // Strict or lazy detaching:
     if (strict){
     //	this need to be modified*******************
-        remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
-        remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
+     //   remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
+      //  remove(watches[(c[0]).x], Watcher(cr,c[0], c[0]));
     }else{
-        watches.smudge(c[0].x);
-        watches.smudge(c[1].x);
+        watches.smudge(c[0].vn);
+        watches.smudge(c[1].vn);
     }
 
     if (c.learnt()) num_learnts--, learnts_literals -= c.size();
@@ -794,7 +799,7 @@ void Solver::rebuildOrderHeap()
     vec<Var> vs;
     for (Var v = 0; v < nVars(); v++)
         if (decision[v] && value(findLiteral(v)) == l_Undef)
-            vs.push(v);
+            {vs.push(v);printf("** %d **\t",v);}
     order_heap.build(vs);
     printf("\t size:%d \n",order_heap.size());
 }
@@ -816,6 +821,7 @@ bool Solver::satisfied(const Clause& c) const {
 // Revert to the state at given level (keeping all assignment at 'level' but not beyond).
 //
 void Solver::cancelUntil(int level) {
+printf("\nbacktracking ... \n");
     if (decisionLevel() > level){
 
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
@@ -924,7 +930,7 @@ lbool Solver::solve_()
         for (int i = 0; i < nVars(); i++) model[i] = value(i);
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
-
+	printf("finished solving");
     cancelUntil(0);
     return status;
 
@@ -938,13 +944,13 @@ void Solver::relocAll(ClauseAllocator& to)
     // All watchers:
     //
     watches.cleanAll();
-    for (int v = 0; v < nVars(); v++)
-        for (int s = 0; s < 2; s++){
-            LitArith p = mkLit(v, 0, OPTR_EQ,0, s);
-            vec<Watcher>& ws = watches[p.x];
+    for (int v = 0; v < nVars(); v++){
+            LitArith p = findLiteral(v);
+			if(p==lit_Undef) continue;
+            vec<Watcher>& ws = watches[p.vn];
             for (int j = 0; j < ws.size(); j++)
                 ca.reloc(ws[j].cref, to);
-        }
+	}
 
     // All reasons:
     //

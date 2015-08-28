@@ -78,6 +78,7 @@ public:
 			else if(litPosition[middle]==x) {lower = middle;break;}
 		}
 		if(litPosition[lower]<=x) lower++;
+		if(lower>=clauses.size()) return lit_Undef;
 		Clause &c = ca[clauses[lower]];
 		for(int i=0;i<c.size();i++){
 			if(c[i].x==x) return c[i];
@@ -85,6 +86,22 @@ public:
 
 		return lit_Undef;
 
+	}
+
+	void rebuildLitPosition(){
+		litPosition.clear();
+		for(int i=0;i<clauses.size();i++){
+			Clause &c = ca[clauses[i]];
+			int max = 0;
+			for(int k = 0; k<c.size();k++){
+				if(c[k].x>max) max = c[k].x;
+			}
+			litPosition.push(max);
+		}
+
+		for(int i=0;i<litPosition.size();i++){
+			printf("%d\t",litPosition[i]);
+		}
 	}
     Solver();
     virtual ~Solver();
@@ -332,6 +349,7 @@ public:
 		for(int i=0;i<VarName.size();i++){
 			printf("%ef\t%s\t%ef\n",bounds[i].lower,VarName[i].c_str(),bounds[i].upper);
 		}
+		printf("\n");
     }
 
     // Static helpers:
