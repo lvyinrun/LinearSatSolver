@@ -22,6 +22,7 @@ class RegionAllocator
     typedef uint32_t Ref;
 
     enum { Ref_Undef = UINT32_MAX };
+    enum { Ref_Check_Error = UINT32_MAX-1 };
     enum { Unit_Size = sizeof(T) };
 
     explicit RegionAllocator(uint32_t start_cap = 1024*1024) : memory(NULL), sz(0), cap(0), wasted_(0){ capacity(start_cap); }
@@ -79,7 +80,6 @@ void RegionAllocator<T>::capacity(uint32_t min_cap)
     // printf(" .. (%p) cap = %u\n", this, cap);
 
     assert(cap > 0);
-    printf("\n\nafjasd:%d\n\n\n",sizeof(T));
     memory = (T*)xrealloc(memory, sizeof(T)*cap);
 }
 

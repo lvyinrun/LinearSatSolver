@@ -17,12 +17,16 @@ int main(int argc, char **argv)
         printf("ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
 
 	Solver S;
+	S.initMatrix();
     parse_SMT(in, S, (bool)0);
-
 
     gzclose(in);
     FILE* res = (argc >= 3) ? fopen(argv[2], "wb") : NULL;
 
+
+	S.displayBounds();
+	S.displayClauses();
+	S.displayWatchList();
 
 	if(!S.simplify())     cout << "\n\Failed" << endl;
 	else cout<<"\n\nstart solving\n\n"<<endl;
@@ -33,10 +37,11 @@ int main(int argc, char **argv)
 	S.displayWatchList();
 	lbool ret = S.solveLimited(dummy);
 
+S.printMatrix();
 
 
 
-
+	S.displayBounds();
 
 
 	if(S.ok==true) printf("TRUE");else printf("FALSE");

@@ -10,6 +10,9 @@
 #include "../tl/Heap.h"
 
 #include "../utils/Options.h"
+#include <stack>
+
+using namespace std;
 typedef int Var;
 
 #define l_Undef (lbool((uint8_t)2))
@@ -103,12 +106,132 @@ public:
 			printf("%d\t",litPosition[i]);
 		}
 	}
+
+	void initMatrix(){
+	//wrong place
+		matrixOut=fopen("a.txt","w");
+		matrix=(double *) malloc(sizeof(double)*(LimitsRowNum)*(LimitsVarNum));
+	}
+
+	void matrixAddRow(stack<ArithItem> & items,int basic){
+	rowNumber++;
+	if(rowNumber>MAX_ROW) MAX_ROW = rowNumber;
+	printf("adding matrix %d\n",rowNumber);
+		while(items.size()>0){
+			ArithItem item = items.top();
+			items.pop();
+			int colNum = item.item_value.term.variable;
+			if(colNum>MAX_COLUMN) MAX_COLUMN = colNum;
+			matrix[rowNumber*LimitsVarNum+colNum] = item.item_value.term.coefficient;
+			if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
+		}
+		if(basic>MAX_COLUMN) MAX_COLUMN = basic;
+		matrix[(rowNumber)*LimitsVarNum+basic]=-1;
+        matrix[basic]=rowNumber;
+		printf("\t%d \n",basic);
+	}
+
+	void printMatrix(){
+		for(int i=0;i<=MAX_ROW;i++){
+			for(int j=0;j<=MAX_COLUMN;j++){
+				fprintf(matrixOut,"%3.3f\t",matrix[i*LimitsVarNum+j]);
+			}fprintf(matrixOut,"\n");
+		}fprintf(matrixOut,"\n\n");
+	}
+	void update(int varNumber,double val){
+		int rowNum = 0;
+		double dval = val - bounds[varNumber].val;
+		for(int i=0;i<=MAX_COLUMN;i++){
+			rowNum = matrix[i];
+			if(rowNum!=0){
+				bounds[i].val += matrix[rowNum*LimitsVarNum+varNumber]*dval;
+			}
+		}
+		bounds[varNumber].val = val;
+	}
+void pivotAndUpdate(int xi,int xj,double v){
+
+};
+	bool check(){
+	printMatrix();
+		CRef    confl     = CRef_Undef;
+		while(true){
+			int col=0, row=0;
+			VarBound bound;
+			for(col=0; col <= MAX_COLUMN; col++){
+				if(matrix[col]!=0) {
+				bound = bounds[col];
+					if(bound.val>bound.upper||bound.val<bound.lower) break;
+				}
+			}
+			if(MAX_COLUMN < col) return true;
+			row = matrix[col];
+			if(bound.val<bound.lower){
+				int i=0;
+				for(i=0;i<=MAX_COLUMN;i++){
+					if(matrix[i]!=0) continue;
+					if((matrix[row*LimitsVarNum + i]>0 && bounds[i].val<bounds[i].upper)||
+					   (matrix[row*LimitsVarNum + i]<0 && bounds[i].val>bounds[i].lower)) break;
+				}
+				if(i>MAX_COLUMN) return false;
+				pivotAndUpdate(row,col,bound.lower);
+				double t = -matrix[row*LimitsVarNum+i];
+				for(int k=0;k<MAX_COLUMN;k++){
+					matrix[row*LimitsVarNum+k] = matrix[row*LimitsVarNum+k]/t;
+				}
+
+				for(int m=1;m<=MAX_ROW;m++){
+					if(m==row) continue;
+					double coeff = matrix[m*LimitsVarNum+i];
+					for(int n=0; n<MAX_COLUMN;n++){
+						matrix[m*LimitsVarNum+n] += matrix[row*LimitsVarNum+n]*coeff;
+					}
+				}
+				bounds[col].val = bounds[col].lower;
+				matrix[i] = matrix[col];
+				matrix[col] = 0;
+			}else if(bound.val>bound.upper){
+				int i=0;
+				for(i=0;i<=MAX_COLUMN;i++){
+					if(matrix[i]!=0) continue;
+					if((matrix[row*LimitsVarNum + i]<0 && bounds[i].val<bounds[i].upper)||
+					   (matrix[row*LimitsVarNum + i]>0 && bounds[i].val>bounds[i].lower)) break;
+				}
+				if(i>MAX_COLUMN) return false;
+				pivotAndUpdate(row,col,bound.upper);
+				double t = -matrix[row*LimitsVarNum+i];
+				for(int k=0;k<MAX_COLUMN;k++){
+					matrix[row*LimitsVarNum+k] = matrix[row*LimitsVarNum+k]/t;
+				}
+
+				for(int m=1;m<=MAX_ROW;m++){
+					if(m==row) continue;
+					double coeff = matrix[m*LimitsVarNum+i];
+					for(int n=0; n<MAX_COLUMN;n++){
+						matrix[m*LimitsVarNum+n] += matrix[row*LimitsVarNum+n]*coeff;
+					}
+				}
+				bounds[col].val = bounds[col].upper;
+				matrix[i] = matrix[col];
+				matrix[col] = 0;
+			}
+		}
+	}
+	int LimitsVarNum=8000;
+	int LimitsRowNum=1000;
+	int MAX_COLUMN=0;
+    int MAX_ROW=0;
+    int rowNumber = 0;
+	double * matrix;
+
+	FILE *matrixOut;
     Solver();
     virtual ~Solver();
     // Problem specification:
     //
     Var     newVar    (lbool upol = l_Undef, bool dvar = true); // Add a new variable with parameters specifying variable mode.
-	Var     newVar    (LitArith &lit, lbool upol = l_Undef, bool dvar = true);
+	Var     newLit    (LitArith &lit, lbool upol = l_Undef, bool dvar = true);
+	Var		newVar(string x);
     bool    addClause (const vec<LitArith>& ps);                     // Add a clause to the solver.
     bool    addEmptyClause();                                   // Add the empty clause, making the solver contradictory.
     bool    addClause (LitArith p);                                  // Add a unit clause to the solver.
@@ -287,17 +410,21 @@ public:
 	//new options
 	lbool AssertBounds(LitArith la){
 		if(la.o==OPTR_GRTEQ){
+		//assert lower
 			if(la.v<=bounds[la.vn].lower) return lbool(true);
 			else if(la.v<=bounds[la.vn].upper) {
 				trail_bound.push(mkOldBound(decisionLevel(),la.vn,0,bounds[la.vn].lower));
 				bounds[la.vn].lower = la.v;
+				if(matrix[la.vn]==0&&bounds[la.vn].val<la.v) update(la.vn,la.v);
 				return lbool(true);
 			}
 		}else if(la.o == OPTR_LESSEQ){
+		//assert upper
 			if(la.v >= bounds[la.vn].upper) return lbool(true);
 			else if(la.v>=bounds[la.vn].lower){
 				trail_bound.push(mkOldBound(decisionLevel(),la.vn,1,bounds[la.vn].upper));
 				bounds[la.vn].upper = la.v;
+				if(matrix[la.vn]==0&&bounds[la.vn].val>la.v) update(la.vn,la.v);
 				return lbool(true);
 			}
 		}
@@ -347,7 +474,7 @@ public:
     void displayBounds(){
 		printf("\n\n\n****************   Display Bounds ***************\n");
 		for(int i=0;i<VarName.size();i++){
-			printf("%ef\t%s\t%ef\n",bounds[i].lower,VarName[i].c_str(),bounds[i].upper);
+			printf("%s\t%ef\t%ef\t%ef\n",VarName[i].c_str(),bounds[i].lower,bounds[i].val,bounds[i].upper);
 		}
 		printf("\n");
     }

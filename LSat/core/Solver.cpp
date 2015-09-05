@@ -111,7 +111,19 @@ Var Solver::newVar(lbool upol, bool dvar)
 // Creates a new SAT variable in the solver. If 'decision' is cleared, variable will not be
 // used as a decision variable (NOTE! This has effects on the meaning of a SATISFIABLE result).
 //
-Var Solver::newVar(LitArith &lit, lbool upol,bool dvar)
+
+Var		Solver::newVar(string x){
+	VarMap.insert(pair<string,int>(x,VarMap.size()));
+	VarName.push_back(x);
+
+	int varNum = VarMap.size()-1;
+
+	//printf("\ninit ::   %d  ::",varNum);
+	watches  .init(varNum);
+	bounds.push(VarBound(0, -DBL_MAX, DBL_MAX ));
+}
+
+Var Solver::newLit(LitArith &lit, lbool upol,bool dvar)
 {
     Var v;
     if (free_vars.size() > 0){
@@ -119,12 +131,8 @@ Var Solver::newVar(LitArith &lit, lbool upol,bool dvar)
         free_vars.pop();
     }else
         v = next_var++;
-	//判断第序号为vn的变量是否已经初始化watches
-    if(lit.vn + 1 >= VarName.size()) {
-//		printf("init ::   %d  ::",lit.vn);
-		watches  .init(lit.vn);
-		bounds.push(VarBound(lit.vn, -DBL_MAX, DBL_MAX ));
-    }
+	lit.x = v;
+
     assigns  .insert(v, l_Undef);
     vardata  .insert(v, mkVarData(CRef_Undef, 0));
     activity .insert(v, rnd_init_act ? drand(random_seed) * 0.00001 : 0);
@@ -568,7 +576,8 @@ CRef Solver::propagate()
     }
     propagations += num_props;
     simpDB_props -= num_props;
-
+	if(check() == true) printf("\n*****### check is true ####*****\n");
+	else {printf("\n*****### check is false ####*****\n");return CRef_Check_Error;}
     return confl;
 }
 

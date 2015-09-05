@@ -13,7 +13,6 @@ using namespace std;
 
 map<string,int > VarMap;
 vector<string> VarName;
-
 bool smt_debug_flag=false;
 // Inserts problem into solver.
 //
@@ -23,11 +22,11 @@ static void parse_SMT(gzFile input_stream, Solver& S, bool strictp = false) {
     parse_SMT_main(in, S, strictp);
 }
 void print_item(ArithItem item,int stack_size){
-	if(smt_debug_flag!=true) return;
+	if(smt_debug_flag !=true) return;
 	if(item.type==OPERATOR) printf("operator\t %d\n",stack_size);
 	else if(item.type==VALUE) printf("%f\t %d\n",item.item_value.dvalue,stack_size);
-	else if(item.type==VAR) printf("%s\t %d\n",VarName[item.item_value.varOrder].c_str(),stack_size);
-	else if(item.type==TERM) printf("cof:%f\t var:%s\t %d\n",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str(),stack_size);
+	else if(item.type==TERM) printf("%f %s\t %d\n",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str(),stack_size);
+	else if(item.type==ARITH) printf("%s %s %f %d\n",VarName[item.item_value.la.vn].c_str(),item.item_value.la.o==OPTR_LESSEQ?"<=":">=", item.item_value.la.v,stack_size);
 }
 
 void print_item_format(ArithItem item){
@@ -36,7 +35,7 @@ void print_item_format(ArithItem item){
 		else if(item.item_value.optr==OPTR_RPAR) printf(")\t");
 	}
 	else if(item.type==VALUE) printf("%f\t",item.item_value.dvalue);
-	else if(item.type==VAR) printf("%s\t",VarName[item.item_value.varOrder].c_str());
+//	else if(item.type==VAR) printf("%s\t",VarName[item.item_value.varOrder].c_str());
 	else if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
 }
 
@@ -63,7 +62,8 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
                 //     S.eliminate(true);
             }else if(eagerMatch(in, "declare-fun")){
 				skipWhitespace(in);
-				if(*in=='x') ++in;
+				//if(*in=='x') ++in;
+				parseVariable(in,S);
 
 			//	printf("\n declare %d",parseInt(in));
 				skipLine(in);
@@ -137,10 +137,10 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 									firstPart[i].item_value.dvalue /= divided;
 									s.push(firstPart[i]);
 									print_item(s.top(),s.size());
-								}
-								else if(firstPart[i].type==VAR){
-									s.push(mkArithItemTerm(mkArithTerm(-1/divided,firstPart[i].item_value.varOrder)));
-									print_item(s.top(),s.size());
+//								}
+//								else if(firstPart[i].type==VAR){
+//									s.push(mkArithItemTerm(mkArithTerm(-1/divided,firstPart[i].item_value.varOrder)));
+//									print_item(s.top(),s.size());
 								}else if(firstPart[i].type==TERM){
 									firstPart[i].item_value.term.coefficient /= divided;
 									s.push(firstPart[i]);
@@ -204,9 +204,9 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 										poly[i].item_value.term.coefficient*=coef;
 										s.push(poly[i]);
 										print_item(s.top(),s.size());
-									}else if(poly[i].type==VAR){
-										s.push(mkArithItemTerm(mkArithTerm(coef,poly[i].item_value.varOrder)));
-										print_item(s.top(),s.size());
+//									}else if(poly[i].type==VAR){
+//										s.push(mkArithItemTerm(mkArithTerm(coef,poly[i].item_value.varOrder)));
+//										print_item(s.top(),s.size());
 									}
 								}
 								if(poly.size()==1) {
@@ -281,10 +281,11 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 								double res=0;
 								for(int i=0;i<firstPart.size();i++){
 									if(firstPart[i].type==VALUE) res-=firstPart[i].item_value.dvalue;
-									else if(firstPart[i].type==VAR){
-										s.push(mkArithItemTerm(mkArithTerm(-1,firstPart[i].item_value.varOrder)));
-										print_item(s.top(),s.size());
-									}else if(firstPart[i].type==TERM){
+//									else if(firstPart[i].type==VAR){
+//										s.push(mkArithItemTerm(mkArithTerm(-1,firstPart[i].item_value.varOrder)));
+//										print_item(s.top(),s.size());
+	//								}
+									else if(firstPart[i].type==TERM){
 										firstPart[i].item_value.term.coefficient = -firstPart[i].item_value.term.coefficient;
 										s.push(firstPart[i]);
 										print_item(s.top(),s.size());
@@ -312,10 +313,10 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 									if(mitem.type==VALUE) {
 										res -= mitem.item_value.dvalue;
 									}
-									else if(mitem.type==VAR) {
-										s.push(mkArithItemTerm(mkArithTerm(-1,mitem.item_value.varOrder)));
-										print_item(s.top(),s.size());
-									}
+//									else if(mitem.type==VAR) {
+//										s.push(mkArithItemTerm(mkArithTerm(-1,mitem.item_value.varOrder)));
+//										print_item(s.top(),s.size());
+//									}
 									else if(mitem.type==TERM) {
 										mitem.item_value.term.coefficient = - mitem.item_value.term.coefficient;
 										s.push(mitem);
@@ -335,19 +336,17 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 						else if(ai.item_value.optr == OPTR_EQ|| ai.item_value.optr == OPTR_GRT|| ai.item_value.optr == OPTR_GRTEQ || ai.item_value.optr == OPTR_LESS || ai.item_value.optr == OPTR_LESSEQ){
 							//readClause;此处相当于read clause
 							LitArith la;
+							stack<ArithItem> items;
 							if(localTemp.size()>0){
 								ArithItem cur = localTemp.top();
 								localTemp.pop();
 								stack<ArithItem> cur_stack;
 								if(cur.type == OPTR_LPAR){
 									cur_stack.push(cur);
-								}else{
-									//print_item_format(cur);
-									if(cur.type == VAR) {
-										la.x = S.nVars();
-										la.vn = cur.item_value.varOrder;
+								}else if(cur.type == TERM) {
+										la.vn = cur.item_value.term.variable;
 									}
-								}
+
 								while(cur_stack.size()>0){
 									cur = localTemp.top();
 									localTemp.pop();
@@ -355,17 +354,42 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 									else if(cur.type==OPERATOR&& cur.item_value.optr == OPTR_RPAR) cur_stack.pop();
 									else{
 										//print_item_format(cur);
-										if(cur.type == VAR) la.x = cur.item_value.varOrder;
+										if(cur.type == TERM) items.push(cur);
+										//la.x = cur.item_value.term.variable;
 									}
 								}
 							}
+							if(items.size()>1){
+							//需要进行代换，引入新的变量
+								//	printf("wocao,yao daihuan\n");
+									string res= "x";
+									char sss[10];
+									sprintf(sss,"%d",VarMap.size()+1);
+									res.append(sss);
+									S.newVar(res);
+
+									la.vn = VarMap.size()-1;
+
+									S.matrixAddRow(items,la.vn);
+							}else if(items.size()==1){
+									la.vn = items.top().item_value.term.variable;
+							}
 
 							if(ai.item_value.optr == OPTR_EQ){
-								printf(" = ");la.o = OPTR_EQ;
-							}else if(ai.item_value.optr == OPTR_GRT){printf(" > ");la.o=OPTR_GRT;
-							}else if(ai.item_value.optr == OPTR_GRTEQ){printf(" >= ");la.o=OPTR_GRTEQ;
-							}else if(ai.item_value.optr == OPTR_LESS){printf(" < ");la.o=OPTR_LESS;
-							}else if(ai.item_value.optr == OPTR_LESSEQ){printf(" <= ");la.o = OPTR_LESSEQ;
+								//printf(" = ");
+								la.o = OPTR_EQ;
+							}else if(ai.item_value.optr == OPTR_GRT){
+							//printf(" > ");
+							la.o=OPTR_GRT;
+							}else if(ai.item_value.optr == OPTR_GRTEQ){
+							//printf(" >= ");
+							la.o=OPTR_GRTEQ;
+							}else if(ai.item_value.optr == OPTR_LESS){
+							//printf(" < ");
+							la.o=OPTR_LESS;
+							}else if(ai.item_value.optr == OPTR_LESSEQ){
+							//printf(" <= ");
+							la.o = OPTR_LESSEQ;
 							}else{ printf("what happends");}
 
 							if(localTemp.size()>0){
@@ -392,24 +416,22 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 							/* very importatn
 								and the new clause to Solver state
 								*/
-							while (la.x >= S.nVars()) S.newVar(la);
 							s.push(mkArithItemLitArith(la));
+							print_item(s.top(),s.size());
 						}
 						else if(ai.item_value.optr == OPTR_OR){
 							LitArith lit;
 							while(localTemp.size()>0){
 								ArithItem it = localTemp.top();
 								localTemp.pop();
+
+								S.newLit(it.item_value.la);
 								lits.push(it.item_value.la);
 							}
 
 							//printf("vec size %d\n",lits.size());
 							S.addClauseArith_(lits);
-
-
 							lits.clear();
-
-
 						}else if(ai.item_value.optr == OPTR_AND){
 							printf("\n\n AND \n");
 
@@ -462,7 +484,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_LESS,s.size());
 					}
 					else if(( var_order = lazyMatch(in) ) > -1) {
-						s.push(mkArithItemVar(VAR,var_order));
+						s.push(mkArithItemTerm(var_order));
 						if(smt_debug_flag==true) printf("%s %d var_order:%d\n",VarName[var_order].c_str(),s.size(),var_order);
 					}
 					//printf("%s\n",ARITH_OPTR_NEG);

@@ -136,13 +136,22 @@ static short lazyMatch(B& in) {
 		map<string,int>::iterator it = VarMap.find(res);
 		if(it!=VarMap.end()){
 			return it->second;
-		}else{
-			VarMap.insert(pair<string,int>(res,VarMap.size()));
-			VarName.push_back(res);
-			return VarMap.size()-1;
 		}
 	}
+	return -1;
+}
 
+template<class B, class Solver>
+static void parseVariable(B& in, Solver &S){
+	if(*in >= '0' && *in <= '9') return;
+	else {
+		string res="";
+		while(*in !=' '&& *in!=')') {
+			res += *in;++in;
+		}
+
+		S.newVar(res);
+		}
 }
 //=================================================================================================
 //=================================================================================================

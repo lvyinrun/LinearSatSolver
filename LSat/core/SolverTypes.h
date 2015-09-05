@@ -45,16 +45,17 @@ const char * const ARITH_OPTR_GRTEQ = ">=";
 const char * const ARITH_OPTR_LESS = "<";
 const char * const ARITH_OPTR_LESSEQ = "<=";
 
-enum ArithContentType {OPERATOR,VAR,VALUE,TERM,ARITH};
+enum ArithContentType {OPERATOR,VALUE,TERM,ARITH};
 enum ArithOperator{
 	OPTR_LPAR,OPTR_RPAR,OPTR_AND,OPTR_OR,OPTR_PLUS,OPTR_MINUX,OPTR_MUL,OPTR_DIV,OPTR_NEG,OPTR_EQ,OPTR_GRT,OPTR_GRTEQ,OPTR_LESS,OPTR_LESSEQ
 };
 
 struct VarBound{
-	int var;
+	double val;
 	double lower;
 	double upper;
-	VarBound(int v, double l, double r):var(v),lower(l),upper(r){};
+	VarBound(int v, double l, double r):val(v),lower(l),upper(r){};
+	VarBound():val(0),lower(0),upper(0){};
 };
     struct oldBound{
 		int dl;//decision level;
@@ -126,23 +127,19 @@ struct ArithItem{
 	union {
 		ArithOperator optr;
 		double dvalue;
-		int varOrder;
 		ArithTerm term;
 		LitArith la;
 	} item_value;
 
 	friend ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr);
-	friend ArithItem mkArithItemVar(ArithContentType t,int var);
 	friend ArithItem mkArithItemValue(ArithContentType t,double val);
-	friend ArithItem mkArithItemTerm(ArithContentType t,ArithTerm term);
+	friend ArithItem mkArithItemTerm(ArithTerm term);
+	friend ArithItem mkArithItemTerm(int var);
 	friend ArithItem mkArithItemLitArith(LitArith arith);
 };
 inline ArithItem mkArithItemOptr(ArithContentType t,ArithOperator optr){
 	ArithItem ai;ai.type = t;ai.item_value.optr = optr;	return ai;}
 
-inline ArithItem mkArithItemVar(ArithContentType t,int var){
-	ArithItem ai;ai.type = t;ai.item_value.varOrder = var;return ai;
-}
 inline ArithItem mkArithItemValue(ArithContentType t,double val){
 	ArithItem ai;ai.type = t;ai.item_value.dvalue = val;return ai;
 }
@@ -154,6 +151,9 @@ inline ArithItem mkArithItemLitArith(LitArith arith){
 	ArithItem ai;ai.type = ARITH;ai.item_value.la = arith;return ai;
 }
 
+inline ArithItem mkArithItemTerm(int var){
+	ArithItem ai;ai.type = TERM;ai.item_value.term.coefficient=1;ai.item_value.term.variable = var;return ai;
+}
 
 class lbool {
     uint8_t value;
@@ -360,6 +360,8 @@ public:
 // ClauseAllocator -- a simple class for allocating memory for clauses:
 
 const CRef CRef_Undef = RegionAllocator<uint32_t>::Ref_Undef;
+const CRef CRef_Check_Error = RegionAllocator<uint32_t>::Ref_Check_Error;
+
 class ClauseAllocator
 {
     RegionAllocator<uint32_t> ra;//4 bytes
