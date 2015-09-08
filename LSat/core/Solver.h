@@ -11,7 +11,8 @@
 
 #include "../utils/Options.h"
 #include <stack>
-
+#include <set>
+#include <map>
 using namespace std;
 typedef int Var;
 
@@ -66,10 +67,135 @@ protected:
 
 
 public:
+	bool Switch_ALL = false;
+    bool Switch_PMatrix = true;
+	bool Switch_DisPlay = true;
 // personal defined variables
-
+	bool checkFlag = false;
 	vec<int> litPosition;
 
+	struct PickedLiteral{
+		int clause;
+		int var;
+		int dl;
+		set<int> found;
+	};
+	map<int,int> LitClauseMap;
+	vector<bool> clauseAssigned;
+	void buildPickHashMap(){
+		for(int i=0;i<clauses.size();i++){
+		clauseAssigned.push_back(false);
+			int k = clauses[i];
+			//printf("\n%d:",i);
+			for(int m =0; m< ca[k].header.size;m++){
+				//printf("%d\t",ca[k].data[m].lit.x);
+				LitClauseMap.insert(pair<int,int>(ca[k].data[m].lit.x,i));
+			}
+		}
+    }
+	void print_Lit(LitArith lit){
+		if(!Switch_ALL) printf("\nLit %d %s %s %f",lit.x,VarName[lit.vn].c_str(),lit.o==OPTR_GRTEQ?">=":"<=",lit.v);
+	}
+	int firstOrder = 0;
+	stack<PickedLiteral> SearchStack;
+	LitArith PickFirstLit(){
+		LitArith la = lit_Undef;
+        Clause& c = ca[0];
+        if(firstOrder>=c.size()) return la;
+
+        PickedLiteral newPl;
+		newPl.clause = 0;
+		newPl.found.insert(c[firstOrder].x);
+		newPl.var = c[firstOrder].x;
+		newPl.dl = decisionLevel();
+		la = c[firstOrder];
+		firstOrder++;
+		SearchStack.push(newPl);
+		if(!Switch_ALL)printf("\nPick First Literal");
+		print_Lit(la);
+		return la;
+//        if(!satisfied(c)){
+//            for (int m = 0; m < c.size(); m++)
+//                if (value(c[m]) != l_False)
+//                {
+//                    PickedLiteral newPl;
+//                    newPl.clause = 0;
+//                    newPl.found.insert(c[m].x);
+//                    newPl.var = c[m].x;
+//                    newPl.dl = decisionLevel()+1;
+//                    la = c[m];
+//                    SearchStack.push(newPl);
+//                    printf("\nPick First Literal");
+//					print_Lit(la);
+//					return la;
+//                } }
+//			return la;
+
+	}
+	LitArith pickBranchLiteral(){
+		LitArith la=lit_Undef;
+		if(SearchStack.size()==0){
+			return PickFirstLit();
+		}
+		bool unsatisfiedFlag = false;
+		while(SearchStack.size()>0){
+			PickedLiteral &pl = SearchStack.top();
+			int i, j;
+//层次区分不够明确，keep on working
+		bool loteral = (pl.dl <= decisionLevel());//横向的还是纵向的找（取决于上层是否回溯）
+		for (i = loteral?pl.clause+1:pl.clause; i < clauses.size(); i++){
+			//当前变量与decision相等说明前面未经回溯，在新的一层寻找。否则说明已经回溯过一层，在当前层寻找
+
+				Clause& c = ca[clauses[i]];
+				if(!satisfied(c)){
+					unsatisfiedFlag = true;
+					for (int m = 0; m < c.size(); m++)
+						if (value(c[m]) == l_Undef&&pl.found.find(c[m].x)==pl.found.end()){
+							if(i==pl.clause){
+							//同一层，替换
+								pl.dl = decisionLevel()+1;pl.found.insert(c[m].x);pl.var = c[m].x;
+							}
+							else{
+								PickedLiteral newPl;
+								newPl.clause = i;newPl.found.insert(c[m].x);newPl.var = c[m].x;newPl.dl = decisionLevel()+1;
+								SearchStack.push(newPl);
+							}
+							la = c[m];
+							goto LitFound;
+						}
+				}else if(clauseAssigned[i]==false) {
+					unsatisfiedFlag = true;
+					Clause& c = ca[clauses[i]];
+					PickedLiteral newPl;
+					newPl.clause = i;newPl.found.insert(c[0].x);newPl.var = c[0].x;newPl.dl = decisionLevel()+1;
+					SearchStack.push(newPl);
+					la = c[0];
+					goto LitFound;
+				}
+				if(loteral==false) break;
+			}
+			if(unsatisfiedFlag==false) return lit_AllSatisfied;
+			if(la==lit_Undef&&unsatisfiedFlag==true){
+				//no branchliteral could be found backtrack
+				if(decisionLevel()-1>=0)
+					cancelUntil(decisionLevel()-1);
+				SearchStack.pop();
+			}else{
+
+			}
+
+		}
+		LitFound:
+		if(!Switch_ALL) printf("\nPick Literal");
+		if(!Switch_ALL) print_Lit(la);
+		return la;
+
+	}
+	bool FindUdefinedLit(const Clause& c) const {
+    for (int i = 0; i < c.size(); i++)
+        if (value(c[i]) == l_True)
+            return true;
+    return false; }
 
 	LitArith findLiteral(int x){
 		int lower = 0, upper = litPosition.size();
@@ -102,41 +228,55 @@ public:
 			litPosition.push(max);
 		}
 
-		for(int i=0;i<litPosition.size();i++){
-			printf("%d\t",litPosition[i]);
-		}
+//		for(int i=0;i<litPosition.size();i++){
+//			printf("%d\t",litPosition[i]);
+//		}
 	}
 
 	void initMatrix(){
 	//wrong place
 		matrixOut=fopen("a.txt","w");
 		matrix=(double *) malloc(sizeof(double)*(LimitsRowNum)*(LimitsVarNum));
+		fclose(matrixOut);
 	}
 
 	void matrixAddRow(stack<ArithItem> & items,int basic){
 	rowNumber++;
 	if(rowNumber>MAX_ROW) MAX_ROW = rowNumber;
-	printf("adding matrix %d\n",rowNumber);
+	//printf("adding matrix %d\n",rowNumber);
 		while(items.size()>0){
 			ArithItem item = items.top();
 			items.pop();
 			int colNum = item.item_value.term.variable;
 			if(colNum>MAX_COLUMN) MAX_COLUMN = colNum;
 			matrix[rowNumber*LimitsVarNum+colNum] = item.item_value.term.coefficient;
-			if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
+			//if(item.type==TERM) printf("%f%s\t",item.item_value.term.coefficient,VarName[item.item_value.term.variable].c_str());
 		}
 		if(basic>MAX_COLUMN) MAX_COLUMN = basic;
 		matrix[(rowNumber)*LimitsVarNum+basic]=-1;
         matrix[basic]=rowNumber;
-		printf("\t%d \n",basic);
+		//printf("\t%d \n",basic);
 	}
-
+    void printBoundAndValue(){
+		if(Switch_PMatrix && Switch_ALL) return;
+		matrixOut=fopen("a.txt","a");
+		fprintf(matrixOut,"\n\n\n****************   Display Bounds ***************\n");
+		for(int i=0;i<VarName.size();i++){
+			fprintf(matrixOut,"%s\t%ef\t%ef\t%ef\n",VarName[i].c_str(),bounds[i].lower,bounds[i].val,bounds[i].upper);
+		}
+		fprintf(matrixOut,"\n");
+		fclose(matrixOut);
+    }
 	void printMatrix(){
+		if(Switch_PMatrix && Switch_ALL) return;
+		matrixOut=fopen("a.txt","a");
 		for(int i=0;i<=MAX_ROW;i++){
 			for(int j=0;j<=MAX_COLUMN;j++){
-				fprintf(matrixOut,"%3.3f\t",matrix[i*LimitsVarNum+j]);
+				fprintf(matrixOut,"%3.4f\t",matrix[i*LimitsVarNum+j]);
 			}fprintf(matrixOut,"\n");
 		}fprintf(matrixOut,"\n\n");
+		fclose(matrixOut);
+		printBoundAndValue();
 	}
 	void update(int varNumber,double val){
 		int rowNum = 0;
@@ -149,11 +289,27 @@ public:
 		}
 		bounds[varNumber].val = val;
 	}
+
+	void InitialSlashVariable(){
+		int i=0;
+		while(matrix[i]==0&&i<=MAX_COLUMN) i++;
+		int nonbasic = i;
+		while(i<=MAX_COLUMN){
+			double res = 0;
+			int rowNum = matrix[i];
+			for(int j=0;j<nonbasic;j++){
+				res += matrix[rowNum*LimitsVarNum+j] * bounds[j].val;
+			}
+			bounds[i].val = res;
+			i++;
+		}
+
+	}
 void pivotAndUpdate(int xi,int xj,double v){
 
 };
 	bool check(){
-	printMatrix();
+		printMatrix();
 		CRef    confl     = CRef_Undef;
 		while(true){
 			int col=0, row=0;
@@ -165,6 +321,7 @@ void pivotAndUpdate(int xi,int xj,double v){
 				}
 			}
 			if(MAX_COLUMN < col) return true;
+			//col是基变量，要换入到非基中
 			row = matrix[col];
 			if(bound.val<bound.lower){
 				int i=0;
@@ -174,16 +331,32 @@ void pivotAndUpdate(int xi,int xj,double v){
 					   (matrix[row*LimitsVarNum + i]<0 && bounds[i].val>bounds[i].lower)) break;
 				}
 				if(i>MAX_COLUMN) return false;
+				//i is basic variable and need to pivot in
+				double oldIvalue = bounds[i].val;
+
 				pivotAndUpdate(row,col,bound.lower);
+
 				double t = -matrix[row*LimitsVarNum+i];
-				for(int k=0;k<MAX_COLUMN;k++){
+
+
+				bounds[i].val = (bounds[col].lower-bounds[col].val)/matrix[row*LimitsVarNum+i]+bounds[i].val;
+				//对每个基变量中含xi的值的val进行修改
+				for(int k=0;k<=MAX_COLUMN;k++){
+					if(matrix[k]!=0){
+						int row = matrix[k];
+						if(matrix[row*LimitsVarNum+i]!=0){
+							bounds[k].val +=  matrix[row*LimitsVarNum+i]*(bounds[i].val- oldIvalue);
+						}
+					}
+				}
+				for(int k=0;k<=MAX_COLUMN;k++){
 					matrix[row*LimitsVarNum+k] = matrix[row*LimitsVarNum+k]/t;
 				}
 
 				for(int m=1;m<=MAX_ROW;m++){
 					if(m==row) continue;
 					double coeff = matrix[m*LimitsVarNum+i];
-					for(int n=0; n<MAX_COLUMN;n++){
+					for(int n=0; n<=MAX_COLUMN;n++){
 						matrix[m*LimitsVarNum+n] += matrix[row*LimitsVarNum+n]*coeff;
 					}
 				}
@@ -198,16 +371,30 @@ void pivotAndUpdate(int xi,int xj,double v){
 					   (matrix[row*LimitsVarNum + i]>0 && bounds[i].val>bounds[i].lower)) break;
 				}
 				if(i>MAX_COLUMN) return false;
+				double oldIvalue = bounds[i].val;
+
 				pivotAndUpdate(row,col,bound.upper);
 				double t = -matrix[row*LimitsVarNum+i];
-				for(int k=0;k<MAX_COLUMN;k++){
+
+				bounds[i].val = (bounds[col].upper-bounds[col].val)/matrix[row*LimitsVarNum+i]+bounds[i].val;
+				//对每个基变量中含xi的值的val进行修改
+				for(int k=0;k<=MAX_COLUMN;k++){
+					if(matrix[k]!=0){
+						int row = matrix[k];
+						if(matrix[row*LimitsVarNum+i]!=0){
+							bounds[k].val +=  matrix[row*LimitsVarNum+i]*(bounds[i].val- oldIvalue);
+						}
+					}
+				}
+
+				for(int k=0;k<=MAX_COLUMN;k++){
 					matrix[row*LimitsVarNum+k] = matrix[row*LimitsVarNum+k]/t;
 				}
 
 				for(int m=1;m<=MAX_ROW;m++){
 					if(m==row) continue;
 					double coeff = matrix[m*LimitsVarNum+i];
-					for(int n=0; n<MAX_COLUMN;n++){
+					for(int n=0; n<=MAX_COLUMN;n++){
 						matrix[m*LimitsVarNum+n] += matrix[row*LimitsVarNum+n]*coeff;
 					}
 				}
@@ -218,7 +405,7 @@ void pivotAndUpdate(int xi,int xj,double v){
 		}
 	}
 	int LimitsVarNum=8000;
-	int LimitsRowNum=1000;
+	int LimitsRowNum=2000;
 	int MAX_COLUMN=0;
     int MAX_ROW=0;
     int rowNumber = 0;
@@ -431,9 +618,9 @@ void pivotAndUpdate(int xi,int xj,double v){
 		return lbool(false);
 	}
 
-
     //Arith helpers
     void displayClauses(){
+		if(Switch_DisPlay&&Switch_ALL) return;
 		printf("\n\n\n****************   Display Clause  ***************\n");
 		printf("%d\n\n",clauses.size());
 		for(int i=0;i<clauses.size();i++){
@@ -443,6 +630,7 @@ void pivotAndUpdate(int xi,int xj,double v){
 		}
     }
     void displayOneClause(Clause &cla){
+		if(Switch_DisPlay&&Switch_ALL) return;
 		int k = cla.header.size;
 		printf(" size:%d\n",k);
 		for(int i=0;i<k;i++){
@@ -452,19 +640,22 @@ void pivotAndUpdate(int xi,int xj,double v){
     }
 
     void displayWatchList(){
+		if(Switch_DisPlay&&Switch_ALL) return;
 		printf("\n\n\n****************   Display Watches  ***************\n");
 		for(int i=0;i<VarName.size();i++){
 			vec<Watcher> ws = watches.lookup(i);
 			printf(" order:%d\n",i);
 			Watcher        *j, *end;
 			for(j = (Watcher*)ws, end = j + ws.size();  j != end;j++){
-				printf("  %d %d %s %s %f\t",j->cref,j->blocker.x, VarName[j->blocker.vn].c_str(),j->blocker.o==13?"<=":">=",j->blocker.v);
+				printf("  %d\t Watch\t %d %s %s %f\t",j->cref,j->blocker.x, VarName[j->blocker.vn].c_str(),j->blocker.o==13?"<=":">=",j->blocker.v);
+				printf("Self\t %d %s %s %f\n",j->self.x, VarName[j->self.vn].c_str(),j->self.o==13?"<=":">=",j->self.v);
 			}
 			printf("\n");
 		};
     }
 
     void displayOneWatch(vec<Watcher> & wc){
+		if(Switch_DisPlay&&Switch_ALL) return;
 		printf("\n\n\n****************   Display One Watch  ***************\n");
 		for(int j=0;j<wc.size();j++){
 				printf("  %d %s %s %f\t",wc[j].cref,VarName[wc[j].blocker.vn].c_str(),wc[j].blocker.o==13?"<=":">=",wc[j].blocker.v);
@@ -472,6 +663,7 @@ void pivotAndUpdate(int xi,int xj,double v){
     }
 
     void displayBounds(){
+		if(Switch_DisPlay&&Switch_ALL) return;
 		printf("\n\n\n****************   Display Bounds ***************\n");
 		for(int i=0;i<VarName.size();i++){
 			printf("%s\t%ef\t%ef\t%ef\n",VarName[i].c_str(),bounds[i].lower,bounds[i].val,bounds[i].upper);
@@ -504,6 +696,7 @@ inline CRef Solver::reason(Var x) const { return vardata[x].reason; }
 inline int  Solver::level (Var x) const { return vardata[x].level; }
 
 inline void Solver::insertVarOrder(Var x) {
+	int si = order_heap.size();
     if (!order_heap.inHeap(x) && decision[x]) order_heap.insert(x); }
 
 inline void Solver::varDecayActivity() { var_inc *= (1 / var_decay); }
@@ -620,7 +813,10 @@ inline void Solver::checkGarbage(double gf){
         garbageCollect(); }
 
 inline bool     Solver::locked          (const Clause& c) const { return value(c[0]) == l_True && reason(var(c[0])) != CRef_Undef && ca.lea(reason(var(c[0]))) == &c; }
-inline void     Solver::newDecisionLevel()                      { trail_lim.push(trail.size()); }
+inline void     Solver::newDecisionLevel()                      {
+	trail_lim.push(trail.size());
+	//printf("New Decision Level:%d",decisionLevel());
+	}
 
 
 

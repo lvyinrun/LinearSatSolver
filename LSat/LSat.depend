@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1441450675 source:/home/yinrun/Desktop/LinearSatSovler/LSat/main.cpp
+1441700654 source:/home/yinrun/Desktop/LinearSatSovler/LSat/main.cpp
 	<iostream>
 	<stdlib.h>
 	<stdio.h>
@@ -7,11 +7,11 @@
 	"parse/ParseSMT.h"
 	"core/Solver.h"
 
-1441455236 source:/home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.cpp
+1441718731 source:/home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.cpp
 	<math.h>
 	"Solver.h"
 
-1441451028 /home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.h
+1441718467 /home/yinrun/Desktop/LinearSatSovler/LSat/core/Solver.h
 	<stdio.h>
 	"SolverTypes.h"
 	"../tl/Vec.h"
@@ -21,6 +21,8 @@
 	"../tl/Heap.h"
 	"../utils/Options.h"
 	<stack>
+	<set>
+	<map>
 
 1441160347 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseUtils.h
 	"../tl/Vec.h"
@@ -41,13 +43,13 @@
 	<new>
 	<../tl/Xalloc.h>
 
-1441452111 /home/yinrun/Desktop/LinearSatSovler/LSat/core/SolverTypes.h
+1441608040 /home/yinrun/Desktop/LinearSatSovler/LSat/core/SolverTypes.h
 	"inttypes.h"
 	"../tl/IntMap.h"
 	"../tl/Alloc.h"
 	<float.h>
 
-1441433955 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseSMT.h
+1441714171 /home/yinrun/Desktop/LinearSatSovler/LSat/parse/ParseSMT.h
 	<zlib.h>
 	<stack>
 	<map>

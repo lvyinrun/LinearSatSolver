@@ -14,6 +14,7 @@ using namespace std;
 map<string,int > VarMap;
 vector<string> VarName;
 bool smt_debug_flag=false;
+bool orInStack = false;
 // Inserts problem into solver.
 //
 template<class Solver>
@@ -81,6 +82,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 					//弹栈开始运算
 						stack<ArithItem> localTemp;
 						int numOfRPAR=0;
+						if(s.size()==0) continue;
 						while(s.size()>0){
 							ArithItem ai = s.top();
 							s.pop();
@@ -416,10 +418,29 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 							/* very importatn
 								and the new clause to Solver state
 								*/
-							s.push(mkArithItemLitArith(la));
-							print_item(s.top(),s.size());
+							if(orInStack==false){
+							//	printf("\n************************FALSE  %d*****************************\n",localTemp.size());
+								LitArith lit;
+								localTemp.push(mkArithItemLitArith(la));
+								while(localTemp.size()>0){
+									ArithItem it = localTemp.top();
+									localTemp.pop();
+
+									S.newLit(it.item_value.la);
+									lits.push(it.item_value.la);
+								}
+
+								//printf("vec size %d\n",lits.size());
+								S.addClauseArith_(lits);
+								lits.clear();
+								continue;
+							}else{
+								s.push(mkArithItemLitArith(la));
+								print_item(s.top(),s.size());
+							}
 						}
 						else if(ai.item_value.optr == OPTR_OR){
+							orInStack = false;
 							LitArith lit;
 							while(localTemp.size()>0){
 								ArithItem it = localTemp.top();
@@ -433,7 +454,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 							S.addClauseArith_(lits);
 							lits.clear();
 						}else if(ai.item_value.optr == OPTR_AND){
-							printf("\n\n AND \n");
+							//printf("\n\n AND \n");
 
 						}
 
@@ -446,6 +467,7 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_AND,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_OR)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_OR));
+						orInStack = true;
 						if(smt_debug_flag==true) printf("%s %d\n",ARITH_OPTR_OR,s.size());
 					}else if(lazyMatch(in,ARITH_OPTR_PLUS)) {
 						s.push(mkArithItemOptr(OPERATOR,OPTR_PLUS));
@@ -497,10 +519,10 @@ static void parse_SMT_main(B& in, Solver& S, bool strictp = false) {
 			//	printf("\n assert");
             }else if(eagerMatch(in, "check-sat")){
 				skipLine(in);
-				printf("\n check-sat");
+				//printf("\n check-sat");
             }else if(eagerMatch(in, "exit")){
 				skipLine(in);
-				printf("\n exit");
+				//printf("\n exit");
             }
             else{
                 printf("PARSE ERROR! Unexpected char: %c\n", *in), exit(3);

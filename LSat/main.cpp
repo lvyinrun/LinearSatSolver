@@ -27,24 +27,19 @@ int main(int argc, char **argv)
 	S.displayBounds();
 	S.displayClauses();
 	S.displayWatchList();
-
+	S.checkFlag = true;
+	S.InitialSlashVariable();
+	S.buildPickHashMap();
 	if(!S.simplify())     cout << "\n\Failed" << endl;
 	else cout<<"\n\nstart solving\n\n"<<endl;
 	vec<LitArith> dummy;
-	//int k = S.order_heap.size();
-	S.displayBounds();
-	S.displayClauses();
-	S.displayWatchList();
+	S.newDecisionLevel();
+	S.uncheckedEnqueue(S.PickFirstLit());
+
 	lbool ret = S.solveLimited(dummy);
 
-S.printMatrix();
 
-
-
-	S.displayBounds();
-
-
-	if(S.ok==true) printf("TRUE");else printf("FALSE");
+	if(S.ok==true) printf("TRUE\n");else printf("FALSE\n");
 	printf(ret == l_True ? "SATISFIABLE\n" : ret == l_False ? "UNSATISFIABLE\n" : "INDETERMINATE\n");
 	if (ret == l_True)
         {

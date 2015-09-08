@@ -214,7 +214,9 @@ bool Solver::addClauseArith_(vec<LitArith> &ps){
 }
 void Solver::uncheckedEnqueue(LitArith p, CRef from)
 {
-	printf("Unchecked enqueue :%d   ** DecisionLevel:%d\n",p.x,decisionLevel());
+	if(!Switch_ALL) printf("Unchecked enqueue :%d   ** DecisionLevel:%d\n",p.x,decisionLevel());
+	if(LitClauseMap.find(p.x)!= LitClauseMap.end())
+		clauseAssigned[LitClauseMap[p.x]]=true;
     //assert(value(p) == l_Undef);
     assigns[var(p)] = lbool(true);
     vardata[var(p)] = mkVarData(from, decisionLevel());
@@ -360,7 +362,8 @@ void Solver::analyze(CRef confl, vec<LitArith>& out_learnt, int& out_btlevel)
         out_btlevel       = level(var(p));
     }
 
-    for (int j = 0; j < analyze_toclear.size(); j++) seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
+    for (int j = 0; j < analyze_toclear.size(); j++)
+		seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
 }
 // Check if 'p' can be removed from a conflict clause.
 bool Solver::litRedundant(LitArith p)
@@ -544,11 +547,14 @@ CRef Solver::propagate()
 			}else if(value(c[1])==l_False){
 				false_lit = c[1];
 			}
-            i++;
+
 
            // If 0th watch is true, then clause is already satisfied.
             LitArith     first = c[0];
             Watcher w     = Watcher(cr, i->self,first);
+
+            i++;
+
             if (first != blocker && value(first) == l_True){
                 *j++ = w; continue; }
 
@@ -557,6 +563,7 @@ CRef Solver::propagate()
                 if (value(c[k]) != l_False){
                     c[1] = c[k]; c[k] = false_lit;
                     watches[c[1].vn].push(Watcher(cr, c[1],first));
+             //       int q = watches[c[1].vn].size();
                     goto NextClause; }
 
             // Did not find watch -- clause is unit under assignment:
@@ -573,11 +580,19 @@ CRef Solver::propagate()
         NextClause:;
         }
         ws.shrink(i - j);//removed useless watches
+       // displayClauses();
+       // displayWatchList();
     }
     propagations += num_props;
     simpDB_props -= num_props;
-	if(check() == true) printf("\n*****### check is true ####*****\n");
-	else {printf("\n*****### check is false ####*****\n");return CRef_Check_Error;}
+    if(checkFlag==true){
+		if(check() == true) {
+			if(!Switch_ALL) printf("\n*****### check is true ####*****\n");
+		}
+		else {
+			if(!Switch_ALL) printf("\n*****### check is false ####*****\n");
+			return CRef_Check_Error;}
+	}
     return confl;
 }
 
@@ -668,17 +683,42 @@ lbool Solver::search(int nof_conflicts)
     for (;;){
         CRef confl = propagate();
         if (confl != CRef_Undef){
+
             // CONFLICT
             conflicts++; conflictC++;
-            if (decisionLevel() == 0) return l_False;
 
-            learnt_clause.clear();
-            //analyze(confl, learnt_clause, backtrack_level);
+
+            if (decisionLevel() == 0) {
+				LitArith next = lit_Undef;
+
+                decisions++;
+             //   next = pickBranchLit();
+                next = pickBranchLiteral();
+
+                if (next == lit_AllSatisfied)
+                    // Model found:
+                    return l_True;
+				else if(next == lit_Undef){
+					return l_False;
+				}
+				newDecisionLevel();
+				uncheckedEnqueue(next);
+
+				continue;
+
+            }
+            if(SearchStack.size()>0) SearchStack.pop();
+            //return l_False;
+
+   //         learnt_clause.clear();
+  //          analyze(confl, learnt_clause, backtrack_level);
             backtrack_level = decisionLevel()-1;
+
+//            printf("backtrack_level : %d\n",backtrack_level);
             cancelUntil(backtrack_level);
 
 
-	// IGNORE clause learing first
+	 //IGNORE clause learing first
 //            if (learnt_clause.size() == 1){
 //                uncheckedEnqueue(learnt_clause[0]);
 //            }else{
@@ -688,10 +728,10 @@ lbool Solver::search(int nof_conflicts)
 //                claBumpActivity(ca[cr]);
 //                uncheckedEnqueue(learnt_clause[0], cr);
 //            }
-//
+
 //            varDecayActivity();
-//            claDecayActivity();
-//
+  //          claDecayActivity();
+
 //            if (--learntsize_adjust_cnt == 0){
 //                learntsize_adjust_confl *= learntsize_adjust_inc;
 //                learntsize_adjust_cnt    = (int)learntsize_adjust_confl;
@@ -705,48 +745,51 @@ lbool Solver::search(int nof_conflicts)
 //            }
         }else{
             // NO CONFLICT
-            if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
-                // Reached bound on number of conflicts:
-                progress_estimate = progressEstimate();
-                cancelUntil(0);
-                return l_Undef; }
+//            if ((nof_conflicts >= 0 && conflictC >= nof_conflicts) || !withinBudget()){
+//                // Reached bound on number of conflicts:
+//                progress_estimate = progressEstimate();
+//                cancelUntil(0);
+//                return l_Undef; }
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
                 return l_False;
 
-            if (learnts.size()-nAssigns() >= max_learnts)
-                // Reduce the set of learnt clauses:
-                reduceDB();
+//            if (learnts.size()-nAssigns() >= max_learnts)
+//                // Reduce the set of learnt clauses:
+//                reduceDB();
 
             LitArith next = lit_Undef;
-            while (decisionLevel() < assumptions.size()){
-                // Perform user provided assumption:
-                LitArith p = assumptions[decisionLevel()];
-                if (value(p) == l_True){
-                    // Dummy decision level:
-                    newDecisionLevel();
-                }else if (value(p) == l_False){
-                    analyzeFinal(~p, conflict);
-                    return l_False;
-                }else{
-                    next = p;
-                    break;
-                }
-            }
+//            while (decisionLevel() < assumptions.size()){
+//                // Perform user provided assumption:
+//                LitArith p = assumptions[decisionLevel()];
+//                if (value(p) == l_True){
+//                    // Dummy decision level:
+//                    newDecisionLevel();
+//                }else if (value(p) == l_False){
+//                    analyzeFinal(~p, conflict);
+//                    return l_False;
+//                }else{
+//                    next = p;
+//                    break;
+//                }
+//            }
 
             if (next == lit_Undef){
                 // New variable decision:
                 decisions++;
-                next = pickBranchLit();
+             //   next = pickBranchLit();
+                next = pickBranchLiteral();
 
-                if (next == lit_Undef)
+                if (next == lit_AllSatisfied)
                     // Model found:
                     return l_True;
+				else if(next == lit_Undef){
+					return l_False;
+				}
             }
 
             // Increase decision level and enqueue 'next'
-            printf("\ndecisionign new Level\n");
             newDecisionLevel();
             uncheckedEnqueue(next);
         }
@@ -804,13 +847,14 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 void Solver::rebuildOrderHeap()
 {
-	printf("\nrebuilding order heap ");
+	//printf("\nrebuilding order heap ");
     vec<Var> vs;
     for (Var v = 0; v < nVars(); v++)
         if (decision[v] && value(findLiteral(v)) == l_Undef)
-            {vs.push(v);printf("** %d **\t",v);}
+            {vs.push(v);//printf("** %d **\t",v);
+            }
     order_heap.build(vs);
-    printf("\t size:%d \n",order_heap.size());
+   // printf("\t size:%d \n",order_heap.size());
 }
 
 void Solver::removeClause(CRef cr) {
@@ -830,12 +874,15 @@ bool Solver::satisfied(const Clause& c) const {
 // Revert to the state at given level (keeping all assignment at 'level' but not beyond).
 //
 void Solver::cancelUntil(int level) {
-printf("\nbacktracking ... \n");
+	if(!Switch_ALL) printf("\nbacktracking ... \n");
     if (decisionLevel() > level){
 
         for (int c = trail.size()-1; c >= trail_lim[level]; c--){
             Var      x  = var(trail[c]);
-            assigns [x] = l_Undef;
+
+			if(!Switch_ALL) print_Lit(trail[c]);
+            clauseAssigned[x] = false;
+            assigns [LitClauseMap[x]] = l_Undef;
     //        if (phase_saving > 1 || (phase_saving == 1 && c > trail_lim.last()))
      //           polarity[x] = sign(trail[c]);
             insertVarOrder(x); }
@@ -843,8 +890,9 @@ printf("\nbacktracking ... \n");
         trail.shrink(trail.size() - trail_lim[level]);
         trail_lim.shrink(trail_lim.size() - level);
 
-		while(true){
+		while(true&&trail_bound.size()>0){
 			oldBound b = trail_bound.last();
+			if(!Switch_ALL) printf("\n back bounds:%d  Level:%d  trail size:%d",b.dl,level,trail_bound.size());
 			if(b.dl>level){
 				if(b.dir==0) bounds[b.x].lower = b.bound;
 				else if(b.dir==1) bounds[b.x].upper = b.bound;
@@ -940,6 +988,9 @@ lbool Solver::solve_()
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
 	printf("finished solving");
+
+	displayBounds();
+	displayClauses();
     cancelUntil(0);
     return status;
 

@@ -98,7 +98,14 @@ inline LitArith mkLit(Var lit,int varname,ArithOperator optr,double value, bool 
 	return q;
 }
 //need to be changed
-inline  LitArith  operator ~(LitArith p)              { LitArith q; q.x = p.x ^ 1; q.o = p.o; q.v = p.v; q.vn = p.vn; return q; }
+inline  LitArith  operator ~(LitArith p)   {
+	LitArith q;
+	q.x = p.x;
+	q.o = p.o;
+	q.v = p.v;
+	q.vn = p.vn;
+	return q;
+}
 inline  LitArith  operator ^(LitArith p, bool b)      { LitArith q; q.x = p.x ^ (unsigned int)b; q.o = p.o; q.v = p.v; q.vn = p.vn; return q; }
 
 
@@ -106,6 +113,7 @@ inline  LitArith  operator ^(LitArith p, bool b)      { LitArith q; q.x = p.x ^ 
 inline  bool sign      (LitArith p)              { return p.x & 1; }
 inline  int  var       (LitArith p)              { return p.x; }
 
+const LitArith lit_AllSatisfied = {-3};
 const LitArith lit_Undef = { -2 };  // }- Useful special constants.
 const LitArith lit_Error = { -1 };  // }
 
